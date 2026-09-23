@@ -6,6 +6,7 @@
 // Change these two values before using the system in a public place.
 constexpr char WIFI_SSID[] = "Motor-Control";
 constexpr char WIFI_PASSWORD[] = "motor8266";  // 8 characters minimum
+constexpr uint8_t WIFI_CHANNEL = 6;
 
 constexpr uint16_t HTTP_PORT = 80;
 constexpr uint16_t WEBSOCKET_PORT = 81;
@@ -46,8 +47,21 @@ constexpr size_t SPEED_CALIBRATION_COUNT = sizeof(SPEED_CALIBRATION) / sizeof(SP
 // Safety timings.
 constexpr uint32_t JOG_DEADMAN_TIMEOUT_MS = 650;
 constexpr uint32_t MOTOR_PACKET_TIMEOUT_MS = 1000;
-constexpr uint32_t CONTROLLER_HEARTBEAT_MS = 200;
-constexpr uint32_t MOTOR_STATUS_INTERVAL_MS = 500;
+constexpr uint32_t MOTOR_LINK_TIMEOUT_MS = 900;
+constexpr uint32_t ESPNOW_COMMAND_INTERVAL_MS = 50;
+constexpr uint32_t MOTOR_STATUS_INTERVAL_MS = 200;
+constexpr uint32_t ESPNOW_PAIR_INTERVAL_MS = 500;
+
+// Shared ESP-NOW keys. Change them in both two-board sketches before deployment.
+// Discovery is broadcast, while motor commands and status packets are encrypted.
+constexpr uint8_t ESPNOW_KOK[16] = {
+  0x62, 0x89, 0x16, 0x4A, 0xD1, 0x37, 0x55, 0xC0,
+  0x9B, 0x22, 0x7E, 0xA4, 0x31, 0x68, 0x0D, 0xF3
+};
+constexpr uint8_t ESPNOW_LMK[16] = {
+  0x91, 0x2C, 0xE8, 0x44, 0x73, 0x0F, 0xB5, 0x26,
+  0xCA, 0x69, 0x13, 0xDD, 0x58, 0xA7, 0x30, 0xE1
+};
 
 // Signed PWM is moved toward the target every 10 ms. This softens starts and
 // forces direction changes to cross zero first.

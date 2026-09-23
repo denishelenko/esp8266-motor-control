@@ -14,7 +14,18 @@ input[type=range]{position:absolute;left:-2px;top:6px;width:calc(100% + 4px);hei
 .speed{display:grid;grid-template-columns:auto 1fr 48px;gap:12px;align-items:center;margin:12px 0 18px;color:var(--muted)}.speed input{position:static;width:100%;height:auto;opacity:1;accent-color:var(--blue)}.speed output{color:white;text-align:right;font-weight:800}
 .stop{width:100%;border:0;border-radius:15px;min-height:58px;background:#dc2626;color:white;font-weight:900;font-size:1.05rem;cursor:pointer}.programs{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}.programs button,.cal button{border:1px solid #315071;background:#132943;color:white;border-radius:13px;min-height:50px;font-weight:750;cursor:pointer}.programs button.active{border-color:var(--blue);background:#0c4a6e}.programs small{display:block;color:#9bb0cc;font-weight:500;margin-top:3px}
 details{margin-top:14px;border-top:1px solid #29405f;padding-top:13px}summary{color:var(--muted);cursor:pointer}.cal{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.cal .zero{grid-column:1/-1}.note{font-size:.76rem;line-height:1.4;color:var(--muted);margin:13px 2px 0}button:disabled{opacity:.45;filter:grayscale(1)}
-@media(max-width:480px){body{display:block;min-height:100dvh;padding:0;background:#07111f}main{width:100%;min-height:100dvh;border:0;border-radius:0;padding:max(18px,env(safe-area-inset-top)) max(17px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(17px,env(safe-area-inset-left));box-shadow:none}header{min-height:44px}h1{font-size:1.2rem}.pill{font-size:.73rem}.position{margin:18px 0 2px}.position strong{font-size:2.45rem}.railWrap{padding:30px 2px 32px}.rail{height:15px}.centre{top:22px;height:28px}.actual{top:16px;width:27px;height:27px;margin-left:-13.5px;border-width:5px}.targetLabel{top:5px;font-size:.8rem}input[type=range]{top:5px;height:55px;touch-action:pan-x}.speed{grid-template-columns:auto 1fr 46px;gap:10px;margin:8px 0 17px}.speed input{height:32px}.stop{min-height:64px;border-radius:16px;font-size:1rem}.programs{gap:10px;margin-top:14px}.programs button,.cal button{min-height:62px;padding:8px 6px;touch-action:manipulation}details{margin-top:15px;padding-top:15px}summary{min-height:44px;display:flex;align-items:center}.cal{gap:10px}.note{font-size:.8rem}}
+@media(max-width:480px){
+ body{display:block;min-height:100dvh;padding:0;background:#07111f}
+ main{width:100%;min-height:100dvh;border:0;border-radius:0;padding:max(18px,env(safe-area-inset-top)) max(17px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(17px,env(safe-area-inset-left));box-shadow:none}
+ header{min-height:44px}h1{font-size:1.2rem}.pill{font-size:.73rem}
+ .position{margin:18px 0 2px}.position strong{font-size:2.45rem}
+ .railWrap{padding:30px 2px 32px}.rail{height:15px}.centre{top:22px;height:28px}.actual{top:16px;width:27px;height:27px;margin-left:-13.5px;border-width:5px}.targetLabel{top:5px;font-size:.8rem}
+ input[type=range]{top:5px;height:55px;touch-action:pan-x}
+ .speed{grid-template-columns:auto 1fr 46px;gap:10px;margin:8px 0 17px}.speed input{height:32px}
+ .stop{min-height:64px;border-radius:16px;font-size:1rem}
+ .programs{gap:10px;margin-top:14px}.programs button,.cal button{min-height:62px;padding:8px 6px;touch-action:manipulation}
+ details{margin-top:15px;padding-top:15px}summary{min-height:44px;display:flex;align-items:center}.cal{gap:10px}.note{font-size:.8rem}
+}
 @media(max-width:350px){.programs,.cal{grid-template-columns:1fr}.cal .zero{grid-column:auto}.position strong{font-size:2.15rem}}
 </style></head><body><main>
 <header><h1>Бігунок</h1><div class="pill"><i id="dot" class="dot"></i><span id="status">підключення…</span></div></header>
@@ -35,11 +46,10 @@ function setOnline(ok,text){$('dot').classList.toggle('ok',ok);$('status').textC
 function stopJog(){clearInterval(jogTimer);jogTimer=null;send({type:'jog',direction:'stop',speed:0})}
 function connect(){ws=new WebSocket(`ws://${location.hostname}:81/`);ws.onopen=()=>{setOnline(true,'сервер онлайн');send({type:'hello',role:'ui'})};ws.onclose=()=>{setOnline(false,'зв’язок втрачено');clearInterval(jogTimer);setTimeout(connect,1000)};ws.onerror=()=>ws.close();ws.onmessage=e=>{let s;try{s=JSON.parse(e.data)}catch(_){return}if(s.type!=='state')return;
 const p=Number(s.position)||0,min=Number($('target').min),max=Number($('target').max);$('pos').textContent=p.toFixed(2);$('actual').style.left=((p-min)/(max-min)*100)+'%';if(!drag){$('target').value=s.target;$('speed').value=s.speed||$('speed').value;$('speedOut').textContent=$('speed').value+'%';targetVisual(s.target)}
-const motor=s.motorOnline?'мотор онлайн':'мотор офлайн';$('status').textContent=(s.mode==='idle'?motor:s.mode+' • '+motor);document.querySelectorAll('[data-program]').forEach(b=>b.classList.toggle('active',Number(b.dataset.program)===Number(s.program)))}}
+const motor=s.motorOnline?(s.transport==='esp-now'?'ESP-NOW • мотор онлайн':'мотор онлайн'):'мотор офлайн';$('status').textContent=(s.mode==='idle'?motor:s.mode+' • '+motor);document.querySelectorAll('[data-program]').forEach(b=>b.classList.toggle('active',Number(b.dataset.program)===Number(s.program)))}}
 $('target').onpointerdown=()=>drag=true;$('target').oninput=()=>{targetVisual($('target').value);const now=Date.now();if(now-lastSend>90){lastSend=now;send({type:'target',position:Number($('target').value),speed:Number($('speed').value)})}};$('target').onchange=()=>{drag=false;send({type:'target',position:Number($('target').value),speed:Number($('speed').value)})};
 $('speed').oninput=()=>$('speedOut').textContent=$('speed').value+'%';$('stop').onclick=()=>send({type:'stop'});$('zero').onclick=()=>send({type:'zero'});document.querySelectorAll('[data-program]').forEach(b=>b.onclick=()=>send({type:'program',id:Number(b.dataset.program)}));
 for(const [id,dir] of [['jogLeft','left'],['jogRight','right']]){const b=$(id);b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);send({type:'jog',direction:dir,speed:Number($('speed').value)});jogTimer=setInterval(()=>send({type:'jog',direction:dir,speed:Number($('speed').value)}),200)};b.onpointerup=stopJog;b.onpointercancel=stopJog;b.onlostpointercapture=stopJog}
 window.onblur=stopJog;targetVisual(0);connect()})();
 </script></body></html>
 )HTML";
-
