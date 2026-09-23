@@ -5,7 +5,7 @@
 // Wi-Fi network created by the controller ESP8266.
 // Change these two values before using the system in a public place.
 constexpr char WIFI_SSID[] = "Motor-Control";
-constexpr char WIFI_PASSWORD[] = "motor-8266";  // 8 characters minimum
+constexpr char WIFI_PASSWORD[] = "motor8266";  // 8 characters minimum
 
 constexpr uint16_t HTTP_PORT = 80;
 constexpr uint16_t WEBSOCKET_PORT = 81;
@@ -53,5 +53,4 @@ constexpr uint32_t MOTOR_STATUS_INTERVAL_MS = 500;
 // forces direction changes to cross zero first.
 constexpr uint32_t RAMP_INTERVAL_MS = 10;
 constexpr int16_t RAMP_STEP = 24;
-
 
