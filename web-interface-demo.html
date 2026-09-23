@@ -1,0 +1,46 @@
+
+<!doctype html><html lang="uk"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Бігунок — демонстрація інтерфейсу</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;--blue:#38bdf8;--ink:#07111f;--panel:#0e1b2e;--line:#29405f;--muted:#8fa4c2}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -20%,#1e4770 0,#07111f 48%);color:#eef6ff;display:grid;place-items:center;padding:14px}
+main{width:min(680px,100%);background:#0e1b2eef;border:1px solid #29405f;border-radius:24px;padding:20px;box-shadow:0 25px 70px #0009}header{display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:1.25rem;margin:0}.pill{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:7px}.dot{width:9px;height:9px;border-radius:50%;background:#ef4444}.dot.ok{background:#22c55e;box-shadow:0 0 10px #22c55e}
+.position{text-align:center;margin:25px 0 4px}.position strong{font-size:2.7rem;letter-spacing:-.05em}.position span{color:var(--muted)}
+.railWrap{position:relative;padding:22px 0 28px}.rail{height:12px;border-radius:99px;background:linear-gradient(90deg,#7c3aed,#243b59 50%,#0284c7);box-shadow:inset 0 2px 5px #0009}.centre{position:absolute;left:50%;top:16px;width:2px;height:24px;background:#fff7}.actual{position:absolute;top:12px;width:20px;height:20px;margin-left:-10px;border:4px solid white;border-radius:50%;background:#0e1b2e;box-shadow:0 0 12px #fff8;pointer-events:none;transition:left .12s linear}.ticks{display:flex;justify-content:space-between;color:var(--muted);font-size:.78rem;margin-top:9px}
+input[type=range]{position:absolute;left:-2px;top:6px;width:calc(100% + 4px);height:38px;margin:0;opacity:.01;cursor:pointer}.targetLabel{position:absolute;top:0;transform:translate(-50%,-70%);color:var(--blue);font-size:.77rem;font-weight:800;pointer-events:none}
+.speed{display:grid;grid-template-columns:auto 1fr 48px;gap:12px;align-items:center;margin:12px 0 18px;color:var(--muted)}.speed input{position:static;width:100%;height:auto;opacity:1;accent-color:var(--blue)}.speed output{color:white;text-align:right;font-weight:800}
+.stop{width:100%;border:0;border-radius:15px;min-height:58px;background:#dc2626;color:white;font-weight:900;font-size:1.05rem;cursor:pointer}.programs{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}.programs button,.cal button{border:1px solid #315071;background:#132943;color:white;border-radius:13px;min-height:50px;font-weight:750;cursor:pointer}.programs button.active{border-color:var(--blue);background:#0c4a6e}.programs small{display:block;color:#9bb0cc;font-weight:500;margin-top:3px}
+details{margin-top:14px;border-top:1px solid #29405f;padding-top:13px}summary{color:var(--muted);cursor:pointer}.cal{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.cal .zero{grid-column:1/-1}.note{font-size:.76rem;line-height:1.4;color:var(--muted);margin:13px 2px 0}button:disabled{opacity:.45;filter:grayscale(1)}
+</style></head><body><main>
+<header><h1>Бігунок <small style="color:#38bdf8;font-size:.65em">ДЕМО</small></h1><div class="pill"><i id="dot" class="dot"></i><span id="status">підключення…</span></div></header>
+<div class="position"><strong id="pos">0.00</strong> <span>м від центру</span></div>
+<div class="railWrap"><div class="rail"></div><div class="centre"></div><i id="actual" class="actual" style="left:50%"></i><span id="targetLabel" class="targetLabel" style="left:50%">ціль 0.00</span><input id="target" type="range" min="-1.8" max="1.8" step="0.05" value="0"><div class="ticks"><span>−1.8 м</span><span>центр</span><span>+1.8 м</span></div></div>
+<div class="speed"><label for="speed">Швидкість</label><input id="speed" type="range" min="25" max="100" step="1" value="55"><output id="speedOut">55%</output></div>
+<button id="stop" class="stop" disabled>■ АВАРІЙНИЙ СТОП</button>
+<div class="programs">
+ <button data-program="1" disabled>Маятник<small>від краю до краю</small></button><button data-program="2" disabled>Драбинка<small>амплітуда зростає</small></button>
+ <button data-program="3" disabled>Ривки<small>нерівний маршрут</small></button><button data-program="4" disabled>Хаос<small>випадкові точки й темп</small></button>
+</div>
+<details><summary>Ручне виставлення і калібрування</summary><div class="cal"><button id="jogLeft" disabled>◀ тримати: вліво</button><button id="jogRight" disabled>тримати: вправо ▶</button><button id="zero" class="zero" disabled>Позначити поточне місце як центр</button></div><p class="note">Для точності спочатку вручну поставте механізм у фізичний центр і натисніть «Позначити…». Швидкості у м/с калібруються в <b>include/config.h</b>. Без енкодера координата є розрахунковою.</p></details>
+</main><script>
+(()=>{
+const $=id=>document.getElementById(id),buttons=[...document.querySelectorAll('button')];
+let position=0,target=0,speed=55,program=0,jog=0,step=0,pauseUntil=0;
+const patterns={1:[-1.7,1.7],2:[-.45,.45,-.9,.9,-1.35,1.35,-1.7,1.7],3:[-1.6,.8,1.6,-.8,0]};
+buttons.forEach(b=>b.disabled=false);$('dot').classList.add('ok');$('status').textContent='ДЕМО • без ESP';
+function targetVisual(v){const pct=(Number(v)+1.8)/3.6*100;$('targetLabel').style.left=pct+'%';$('targetLabel').textContent='ціль '+Number(v).toFixed(2)}
+function render(){const pct=(position+1.8)/3.6*100;$('pos').textContent=position.toFixed(2);$('actual').style.left=pct+'%';$('target').value=target;targetVisual(target);document.querySelectorAll('[data-program]').forEach(b=>b.classList.toggle('active',Number(b.dataset.program)===program))}
+function setTarget(v){program=0;target=Math.max(-1.8,Math.min(1.8,Number(v)));render()}
+$('target').oninput=()=>setTarget($('target').value);
+$('speed').oninput=()=>{speed=Number($('speed').value);$('speedOut').textContent=speed+'%'};
+$('stop').onclick=()=>{program=0;jog=0;target=position;render()};
+$('zero').onclick=()=>{program=0;jog=0;position=target=0;render()};
+document.querySelectorAll('[data-program]').forEach(b=>b.onclick=()=>{program=Number(b.dataset.program);step=0;pauseUntil=0;target=program===4?(Math.random()*3.4)-1.7:patterns[program][0];render()});
+function stopJog(){jog=0;target=position;render()}
+for(const [id,dir] of [['jogLeft',-1],['jogRight',1]]){const b=$(id);b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);program=0;jog=dir};b.onpointerup=stopJog;b.onpointercancel=stopJog;b.onlostpointercapture=stopJog}
+setInterval(()=>{const now=Date.now();if(jog){position=Math.max(-1.8,Math.min(1.8,position+jog*(.0014*speed)))}else if(now>=pauseUntil){const delta=target-position,move=.00042*speed;if(Math.abs(delta)<=move){position=target;if(program){pauseUntil=now+300;step++;if(program===4){speed=35+Math.round(Math.random()*50);$('speed').value=speed;$('speedOut').textContent=speed+'%';target=(Math.random()*3.4)-1.7}else target=patterns[program][step%patterns[program].length]}}else position+=Math.sign(delta)*move}render()},50);
+render();
+})();
+</script></body></html>
+
