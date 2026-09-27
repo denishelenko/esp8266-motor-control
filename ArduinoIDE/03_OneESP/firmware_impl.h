@@ -45,17 +45,15 @@ bool validEspNowHeader(const EspNowHeader &header, EspNowType type) {
   return header.magic == ESPNOW_MAGIC && header.version == ESPNOW_PROTOCOL_VERSION && header.type == type;
 }
 
-bool addEncryptedPeer(const uint8_t *mac) {
+bool addEspNowPeer(const uint8_t *mac) {
   uint8_t *peer = const_cast<uint8_t *>(mac);
   if (esp_now_is_peer_exist(peer)) return true;
-  return esp_now_add_peer(peer, ESP_NOW_ROLE_COMBO, WIFI_CHANNEL,
-                          const_cast<uint8_t *>(ESPNOW_LMK), sizeof(ESPNOW_LMK)) == 0;
+  return esp_now_add_peer(peer, ESP_NOW_ROLE_COMBO, WIFI_CHANNEL, nullptr, 0) == 0;
 }
 
 bool initEspNow(void (*receiveCallback)(uint8_t *, uint8_t *, uint8_t)) {
   if (esp_now_init() != 0) return false;
   if (esp_now_set_self_role(ESP_NOW_ROLE_COMBO) != 0) return false;
-  esp_now_set_kok(const_cast<uint8_t *>(ESPNOW_KOK), sizeof(ESPNOW_KOK));
   esp_now_register_recv_cb(receiveCallback);
   uint8_t *broadcast = const_cast<uint8_t *>(ESPNOW_BROADCAST_MAC);
   if (!esp_now_is_peer_exist(broadcast))
@@ -109,7 +107,7 @@ uint32_t sequenceNumber = 0, lastMotorSeenAt = 0, acknowledgedSequence = 0;
 
 #if defined(DEVICE_ROLE_CONTROLLER)
 uint8_t motorMac[6] = {};
-bool motorPeerKnown = false;
+bool motorPeerKnown = false, commandDirty = true;
 volatile bool espNowRxPending = false;
 uint8_t espNowRxMac[6] = {};
 uint8_t espNowRxData[ESPNOW_MAX_PACKET_SIZE] = {};
@@ -142,7 +140,8 @@ void processControllerEspNow() {
     if (!motorPeerKnown || memcmp(motorMac, mac, 6) != 0) {
       if (motorPeerKnown && esp_now_is_peer_exist(motorMac)) esp_now_del_peer(motorMac);
       memcpy(motorMac, mac, 6);
-      motorPeerKnown = addEncryptedPeer(motorMac);
+      motorPeerKnown = addEspNowPeer(motorMac);
+      commandDirty = true;
     }
     if (motorPeerKnown) sendPairAcknowledgement(motorMac);
     return;
@@ -163,14 +162,14 @@ void sendMotorCommand() {
     {ESPNOW_MAGIC, ESPNOW_PROTOCOL_VERSION, EspNowType::Command}, sequenceNumber, signedPwm
   };
   esp_now_send(motorMac, reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
-  lastCommandAt = millis();
+  commandDirty = false; lastCommandAt = millis();
 }
 #endif
 
 constexpr float limitM() { return TRACK_LENGTH_M * 0.5f - SAFE_MARGIN_M; }
 const char *modeName() {
   switch (mode) {
-    case Mode::Target: return "рух до цілі";
+    case Mode::Target: return "рух до точки";
     case Mode::Jog: return "ручний рух";
     case Mode::Program: return "програма";
     default: return "idle";
@@ -213,6 +212,9 @@ void setDrive(const char *direction, uint8_t speed) {
   driveDirection = direction;
   driveSpeed = speed;
   ++sequenceNumber;
+#if defined(DEVICE_ROLE_CONTROLLER)
+  commandDirty = true;
+#endif
 #if defined(DEVICE_ROLE_SINGLE)
   const int16_t pwm = map(speed, 0, 100, 0, PWM_MAX);
   localTargetPwm = driveDirection == "right" ? pwm : driveDirection == "left" ? -pwm : 0;
@@ -252,7 +254,7 @@ void chooseProgramTarget() {
   if (activeProgram == 1) { targetM = p1[programStep % 2]; selectedSpeed = 45; }
   else if (activeProgram == 2) { targetM = p2[programStep % 8]; selectedSpeed = 55; }
   else if (activeProgram == 3) { targetM = p3[programStep % 5]; selectedSpeed = 72; }
-  else { targetM = float(random(-170, 171)) / 100.0f; selectedSpeed = random(35, 86); }
+  else { targetM = float(random(-170, 171)) / 100.0f; }
   programWaiting = false;
 }
 
@@ -260,7 +262,7 @@ void reachedTarget() {
   positionM = targetM; setDrive("stop", 0);
   if (mode == Mode::Program) {
     programWaiting = true; ++programStep;
-    programResumeAt = millis() + (activeProgram == 4 ? random(180, 850) : 300);
+    programResumeAt = millis() + 300;
   } else mode = Mode::Idle;
   broadcastState();
 }
@@ -325,6 +327,7 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
   }
   if (!strcmp(t, "program")) {
     const uint8_t id = constrain(d["id"] | 0, 1, 4);
+    if (id == 4) selectedSpeed = constrain(d["speed"] | selectedSpeed, 25, 100);
     mode = Mode::Program; activeProgram = id; programStep = 0; chooseProgramTarget(); broadcastState(); return;
   }
   if (!strcmp(t, "jog")) {
@@ -371,9 +374,9 @@ void loop() {
   updateLocalRamp();
 #endif
   const uint32_t now = millis();
-  if (now - lastBroadcastAt >= 100) broadcastState();
+  if (now - lastBroadcastAt >= UI_BROADCAST_INTERVAL_MS) broadcastState();
 #if defined(DEVICE_ROLE_CONTROLLER)
-  if (now - lastCommandAt >= ESPNOW_COMMAND_INTERVAL_MS) sendMotorCommand();
+  if (commandDirty || now - lastCommandAt >= ESPNOW_COMMAND_INTERVAL_MS) sendMotorCommand();
 #endif
 }
 
@@ -410,7 +413,7 @@ void processMotorEspNow() {
     const EspNowPairPacket &pairing = *reinterpret_cast<EspNowPairPacket *>(data);
     if (memcmp(pairing.targetMac, ownMac, 6) != 0) return;
     memcpy(controllerMac, mac, 6);
-    controllerPaired = addEncryptedPeer(controllerMac);
+    controllerPaired = addEspNowPeer(controllerMac);
     if (controllerPaired) { lastPacketAt = millis(); haveCommandSequence = false; }
     return;
   }
