@@ -19,6 +19,9 @@ constexpr uint8_t MOTOR_IN2_PIN = 4;  // GPIO4 / D2 -> MX1508 IN2
 
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
+constexpr uint8_t SPEED_MIN_PERCENT = 20;
+constexpr uint8_t SPEED_MAX_PERCENT = 60;
+constexpr uint8_t SPEED_DEFAULT_PERCENT = 20;
 
 // Virtual track. Four metres total means centre 0 and physical ends -2..+2 m.
 // SAFE_MARGIN_M keeps software targets away from the physical ends.
@@ -35,12 +38,11 @@ struct CalibrationPoint {
 };
 
 constexpr CalibrationPoint SPEED_CALIBRATION[] = {
-  {25, 0.16f, 0.15f},
+  {20, 0.12f, 0.11f},
+  {30, 0.20f, 0.19f},
   {40, 0.28f, 0.27f},
-  {55, 0.42f, 0.40f},
-  {70, 0.58f, 0.55f},
-  {85, 0.73f, 0.69f},
-  {100, 0.88f, 0.83f},
+  {50, 0.37f, 0.36f},
+  {60, 0.47f, 0.45f},
 };
 constexpr size_t SPEED_CALIBRATION_COUNT = sizeof(SPEED_CALIBRATION) / sizeof(SPEED_CALIBRATION[0]);
 

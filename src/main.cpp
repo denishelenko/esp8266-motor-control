@@ -99,7 +99,7 @@ Mode mode = Mode::Idle;
 
 float positionM = 0.0f, targetM = 0.0f;
 String driveDirection = "stop";
-uint8_t driveSpeed = 0, selectedSpeed = 55;
+uint8_t driveSpeed = 0, selectedSpeed = SPEED_DEFAULT_PERCENT;
 uint8_t activeProgram = 0, programStep = 0;
 bool programWaiting = false;
 uint32_t programResumeAt = 0, lastMotionAt = 0, lastBroadcastAt = 0, lastCommandAt = 0, lastJogAt = 0;
@@ -253,7 +253,7 @@ void chooseProgramTarget() {
   static const float p3[] = {-1.60f, 0.80f, 1.60f, -0.80f, 0.0f};
   if (activeProgram == 1) { targetM = p1[programStep % 2]; selectedSpeed = 45; }
   else if (activeProgram == 2) { targetM = p2[programStep % 8]; selectedSpeed = 55; }
-  else if (activeProgram == 3) { targetM = p3[programStep % 5]; selectedSpeed = 72; }
+  else if (activeProgram == 3) { targetM = p3[programStep % 5]; selectedSpeed = constrain(72, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT); }
   else { targetM = float(random(-170, 171)) / 100.0f; }
   programWaiting = false;
 }
@@ -323,18 +323,18 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
   if (!strcmp(t, "target")) {
     activeProgram = 0; programWaiting = false; mode = Mode::Target;
     targetM = constrain(d["position"] | 0.0f, -limitM(), limitM());
-    selectedSpeed = constrain(d["speed"] | 55, 25, 100); broadcastState(); return;
+    selectedSpeed = constrain(d["speed"] | SPEED_DEFAULT_PERCENT, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT); broadcastState(); return;
   }
   if (!strcmp(t, "program")) {
     const uint8_t id = constrain(d["id"] | 0, 1, 4);
-    if (id == 4) selectedSpeed = constrain(d["speed"] | selectedSpeed, 25, 100);
+    if (id == 4) selectedSpeed = constrain(d["speed"] | selectedSpeed, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
     mode = Mode::Program; activeProgram = id; programStep = 0; chooseProgramTarget(); broadcastState(); return;
   }
   if (!strcmp(t, "jog")) {
     const char *dir = d["direction"] | "stop";
     if (!strcmp(dir, "stop")) { stopAll(); return; }
     mode = Mode::Jog; activeProgram = 0; lastJogAt = millis();
-    selectedSpeed = constrain(d["speed"] | 40, 25, 100);
+    selectedSpeed = constrain(d["speed"] | SPEED_DEFAULT_PERCENT, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
     setDrive(!strcmp(dir, "right") ? "right" : "left", selectedSpeed); return;
   }
 }

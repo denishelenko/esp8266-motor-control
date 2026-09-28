@@ -1,5 +1,15 @@
 #pragma once
 
+#if defined(DEVICE_ROLE_SINGLE)
+#define WEB_SPEED_MIN "20"
+#define WEB_SPEED_MAX "60"
+#define WEB_SPEED_DEFAULT "40"
+#else
+#define WEB_SPEED_MIN "25"
+#define WEB_SPEED_MAX "100"
+#define WEB_SPEED_DEFAULT "55"
+#endif
+
 const char WEB_UI[] PROGMEM = R"HTML(
 <!doctype html><html lang="uk"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -31,7 +41,7 @@ details{margin-top:14px;border-top:1px solid var(--line);padding-top:13px}summar
 <header><h1>Бігунок</h1><div class="pill"><i id="dot" class="dot"></i><span id="status">підключення…</span></div></header>
 <div class="position"><strong id="pos">0.00</strong> <span>м від центру</span></div>
 <div class="railWrap"><div class="rail"></div><div class="centre"></div><i id="actual" class="actual" style="left:50%"></i><span id="targetLabel" class="targetLabel" style="left:50%">ціль 0.00</span><input id="target" type="range" min="-1.8" max="1.8" step="0.05" value="0"><div class="ticks"><span>−1.8 м</span><span>центр</span><span>+1.8 м</span></div></div>
-<div class="speed"><label for="speed">Швидкість</label><input id="speed" type="range" min="25" max="100" step="1" value="55"><output id="speedOut">55%</output></div>
+<div class="speed"><label for="speed">Потужність</label><input id="speed" type="range" min=")HTML" WEB_SPEED_MIN R"HTML(" max=")HTML" WEB_SPEED_MAX R"HTML(" step="1" value=")HTML" WEB_SPEED_DEFAULT R"HTML("><output id="speedOut">)HTML" WEB_SPEED_DEFAULT R"HTML(%</output></div>
 <button id="stop" class="stop" disabled>СТОП</button>
 <div class="programs">
  <button data-program="1" disabled>Маятник<small>від краю до краю</small></button><button data-program="2" disabled>Драбинка<small>амплітуда зростає</small></button>
@@ -53,3 +63,7 @@ for(const [id,dir] of [['jogLeft','left'],['jogRight','right']]){const b=$(id);b
 window.onblur=stopJog;targetVisual(0);connect()})();
 </script></body></html>
 )HTML";
+
+#undef WEB_SPEED_MIN
+#undef WEB_SPEED_MAX
+#undef WEB_SPEED_DEFAULT
