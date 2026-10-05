@@ -1,8 +1,11 @@
 #include <Arduino.h>
 
-// NodeMCU ESP8266 -> MX1508
-// D1 / GPIO5 -> IN1
-// D2 / GPIO4 -> IN2
+// NodeMCU ESP8266 -> L298N channel A
+// Remove the ENA jumper before connecting D5.
+// D5 / GPIO14 -> ENA (PWM / motor power)
+// D1 / GPIO5  -> IN1 (direction)
+// D2 / GPIO4  -> IN2 (direction)
+constexpr uint8_t MOTOR_ENA_PIN = 14;
 constexpr uint8_t MOTOR_IN1_PIN = 5;
 constexpr uint8_t MOTOR_IN2_PIN = 4;
 
@@ -13,23 +16,29 @@ constexpr uint32_t RUN_TIME_MS = 2000;
 constexpr uint32_t PAUSE_MS = 1000;
 
 void stopMotor() {
-  analogWrite(MOTOR_IN1_PIN, 0);
-  analogWrite(MOTOR_IN2_PIN, 0);
+  analogWrite(MOTOR_ENA_PIN, 0);
+  digitalWrite(MOTOR_IN1_PIN, LOW);
+  digitalWrite(MOTOR_IN2_PIN, LOW);
 }
 
 void runLeft(uint16_t pwm) {
-  analogWrite(MOTOR_IN1_PIN, 0);
-  analogWrite(MOTOR_IN2_PIN, pwm);
+  digitalWrite(MOTOR_IN1_PIN, LOW);
+  digitalWrite(MOTOR_IN2_PIN, HIGH);
+  analogWrite(MOTOR_ENA_PIN, pwm);
 }
 
 void runRight(uint16_t pwm) {
-  analogWrite(MOTOR_IN2_PIN, 0);
-  analogWrite(MOTOR_IN1_PIN, pwm);
+  digitalWrite(MOTOR_IN1_PIN, HIGH);
+  digitalWrite(MOTOR_IN2_PIN, LOW);
+  analogWrite(MOTOR_ENA_PIN, pwm);
 }
 
 void setup() {
+  pinMode(MOTOR_ENA_PIN, OUTPUT);
   pinMode(MOTOR_IN1_PIN, OUTPUT);
   pinMode(MOTOR_IN2_PIN, OUTPUT);
+  analogWriteRange(PWM_MAX);
+  analogWriteFreq(1000);
   stopMotor();
 
   Serial.begin(115200);

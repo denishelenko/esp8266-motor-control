@@ -10,7 +10,7 @@ DNSServer dns;
 
 bool testRunning = false;
 bool testRight = true;
-uint8_t testPwmPercent = SPEED_DEFAULT_PERCENT;
+uint8_t testPwmPercent = 20;
 uint32_t testStartedAt = 0;
 uint32_t testDurationMs = 1000;
 int16_t targetPwm = 0;
@@ -23,11 +23,11 @@ const char CALIBRATION_PAGE[] PROGMEM = R"HTML(
 :root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#07111f;color:#eff6ff;padding:14px}main{width:min(560px,100%);background:#101d31;border:1px solid #29405f;border-radius:22px;padding:22px}h1{margin-top:0;font-size:1.35rem}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:grid;gap:6px;color:#a7bad3;font-size:.85rem}input,select,button{font:inherit;border-radius:11px;border:1px solid #385476;background:#0a1526;color:white;padding:12px}input[type=range]{padding:0;accent-color:#38bdf8}.wide{grid-column:1/-1}.buttons{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin:18px 0}button{font-weight:800;cursor:pointer}.run{background:#0284c7}.stop{background:#dc2626}.result{background:#081426;border-radius:14px;padding:15px;margin-top:16px}.big{font-size:2rem;font-weight:900;color:#38bdf8}.code{font-family:monospace;word-break:break-all;color:#fbbf24}.warn{color:#fca5a5;font-size:.82rem;line-height:1.45}.muted{color:#91a6c2;font-size:.82rem;line-height:1.45}.status{font-weight:800;margin:12px 0}
 </style></head><body><main><h1>Калібрування швидкості</h1>
 <p class="warn">Підніміть механізм або звільніть траєкторію. Натискання «Запустити тест» одразу вмикає мотор.</p>
-<div class="grid"><label>Напрямок<select id="dir"><option value="right">Вправо</option><option value="left">Вліво</option></select></label><label>Час тесту, секунд<input id="seconds" type="number" min="0.2" max="10" step="0.1" value="1.0"></label><label class="wide">Потужність: <b id="pwmText">20%</b><input id="pwm" type="range" min="20" max="60" step="1" value="20"></label></div>
+<div class="grid"><label>Напрямок<select id="dir"><option value="right">Вправо</option><option value="left">Вліво</option></select></label><label>Час тесту, секунд<input id="seconds" type="number" min="0.2" max="10" step="0.1" value="1.0"></label><label class="wide">Потужність: <b id="pwmText">20%</b><input id="pwm" type="range" min="0" max="100" step="1" value="20"></label></div>
 <div class="buttons"><button class="run" id="run">▶ Запустити тест</button><button class="stop" id="stop">■ STOP</button></div><div id="status" class="status">Готово до тесту</div>
 <label>Виміряна відстань, сантиметрів<input id="distance" type="number" min="0" step="0.1" placeholder="Наприклад: 83.5"></label><button class="wide" id="calculate" style="width:100%;margin-top:10px">Обчислити швидкість</button>
 <div class="result"><div class="muted">Швидкість / відстань за 1 секунду</div><div id="mps" class="big">— м/с</div><div id="detail" class="muted">Проведіть тест і введіть фактичну відстань.</div><p id="code" class="code"></p></div>
-<p class="muted">Для таблиці повторіть тест на 20, 30, 40, 50 і 60% окремо вправо та вліво. Краще зробити 3 повтори й узяти середнє.</p>
+<p class="muted">Повний діапазон — 0–100%. Для таблиці повторіть тест на 20, 40, 60, 80 і 100% окремо вправо та вліво. Точка 0% завжди дорівнює 0 м/с. Краще зробити 3 повтори й узяти середнє.</p>
 <script>
 const $=id=>document.getElementById(id);let lastDuration=1,lastPwm=20,lastDirection='right';const results={};
 $('pwm').oninput=()=>$('pwmText').textContent=$('pwm').value+'%';
@@ -39,8 +39,19 @@ setInterval(async()=>{try{const s=await(await fetch('/status')).json();$('status
 )HTML";
 
 void writeMotor(int16_t pwm) {
-  analogWrite(MOTOR_IN1_PIN, pwm > 0 ? pwm : 0);
-  analogWrite(MOTOR_IN2_PIN, pwm < 0 ? -pwm : 0);
+  if (pwm > 0) {
+    digitalWrite(MOTOR_IN1_PIN, HIGH);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+    analogWrite(MOTOR_ENA_PIN, pwm);
+  } else if (pwm < 0) {
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+    digitalWrite(MOTOR_IN2_PIN, HIGH);
+    analogWrite(MOTOR_ENA_PIN, -pwm);
+  } else {
+    analogWrite(MOTOR_ENA_PIN, 0);
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+  }
 }
 
 void stopTest() {
@@ -53,7 +64,10 @@ void stopTest() {
 void updateRamp() {
   if (millis() - lastRampAt < RAMP_INTERVAL_MS) return;
   lastRampAt = millis();
-  if (appliedPwm < targetPwm) {
+  if ((appliedPwm > 0 && targetPwm < 0) ||
+      (appliedPwm < 0 && targetPwm > 0)) {
+    appliedPwm = 0;
+  } else if (appliedPwm < targetPwm) {
     appliedPwm += RAMP_STEP;
     if (appliedPwm > targetPwm) appliedPwm = targetPwm;
   } else if (appliedPwm > targetPwm) {
@@ -93,6 +107,7 @@ void handleStatus() {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(MOTOR_ENA_PIN, OUTPUT);
   pinMode(MOTOR_IN1_PIN, OUTPUT);
   pinMode(MOTOR_IN2_PIN, OUTPUT);
   analogWriteRange(PWM_MAX);

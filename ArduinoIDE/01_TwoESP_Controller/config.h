@@ -12,13 +12,18 @@ constexpr uint16_t HTTP_PORT = 80;
 constexpr uint16_t WEBSOCKET_PORT = 81;
 constexpr char CONTROLLER_IP[] = "192.168.4.1";
 
-// Motor ESP8266 pins (NodeMCU labels D1 and D2).
-// These are safe boot pins on common ESP-12E/NodeMCU boards.
-constexpr uint8_t MOTOR_IN1_PIN = 5;  // GPIO5 / D1 -> MX1508 IN1
-constexpr uint8_t MOTOR_IN2_PIN = 4;  // GPIO4 / D2 -> MX1508 IN2
+// ESP8266 NodeMCU -> L298N (channel A).
+// Remove the ENA jumper before connecting MOTOR_ENA_PIN.
+constexpr uint8_t MOTOR_ENA_PIN = 14; // GPIO14 / D5 -> L298N ENA (PWM)
+constexpr uint8_t MOTOR_IN1_PIN = 5;  // GPIO5 / D1  -> L298N IN1
+constexpr uint8_t MOTOR_IN2_PIN = 4;  // GPIO4 / D2  -> L298N IN2
 
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
+
+constexpr uint8_t SPEED_MIN_PERCENT = 0;
+constexpr uint8_t SPEED_MAX_PERCENT = 100;
+constexpr uint8_t SPEED_DEFAULT_PERCENT = 50;
 
 // Virtual track. Four metres total means centre 0 and physical ends -2..+2 m.
 // SAFE_MARGIN_M keeps software targets away from the physical ends.
@@ -35,11 +40,11 @@ struct CalibrationPoint {
 };
 
 constexpr CalibrationPoint SPEED_CALIBRATION[] = {
-  {25, 0.16f, 0.15f},
+  {0, 0.00f, 0.00f},
+  {20, 0.12f, 0.11f},
   {40, 0.28f, 0.27f},
-  {55, 0.42f, 0.40f},
-  {70, 0.58f, 0.55f},
-  {85, 0.73f, 0.69f},
+  {60, 0.47f, 0.45f},
+  {80, 0.65f, 0.62f},
   {100, 0.88f, 0.83f},
 };
 constexpr size_t SPEED_CALIBRATION_COUNT = sizeof(SPEED_CALIBRATION) / sizeof(SPEED_CALIBRATION[0]);

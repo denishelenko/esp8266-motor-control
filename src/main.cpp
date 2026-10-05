@@ -180,13 +180,27 @@ const char *modeName() {
 int16_t localTargetPwm = 0, localAppliedPwm = 0;
 uint32_t lastRampAt = 0;
 void writeLocalMotor(int16_t pwm) {
-  analogWrite(MOTOR_IN1_PIN, pwm > 0 ? pwm : 0);
-  analogWrite(MOTOR_IN2_PIN, pwm < 0 ? -pwm : 0);
+  if (pwm > 0) {
+    digitalWrite(MOTOR_IN1_PIN, HIGH);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+    analogWrite(MOTOR_ENA_PIN, pwm);
+  } else if (pwm < 0) {
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+    digitalWrite(MOTOR_IN2_PIN, HIGH);
+    analogWrite(MOTOR_ENA_PIN, -pwm);
+  } else {
+    analogWrite(MOTOR_ENA_PIN, 0);
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+  }
 }
 void updateLocalRamp() {
   if (millis() - lastRampAt < RAMP_INTERVAL_MS) return;
   lastRampAt = millis();
-  if (localAppliedPwm < localTargetPwm) {
+  if ((localAppliedPwm > 0 && localTargetPwm < 0) ||
+      (localAppliedPwm < 0 && localTargetPwm > 0)) {
+    localAppliedPwm = 0;
+  } else if (localAppliedPwm < localTargetPwm) {
     localAppliedPwm += RAMP_STEP;
     if (localAppliedPwm > localTargetPwm) localAppliedPwm = localTargetPwm;
   } else if (localAppliedPwm > localTargetPwm) {
@@ -342,7 +356,7 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
 void setup() {
   Serial.begin(115200); randomSeed(ESP.getCycleCount());
 #if defined(DEVICE_ROLE_SINGLE)
-  pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
+  pinMode(MOTOR_ENA_PIN, OUTPUT); pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
   analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); writeLocalMotor(0);
 #endif
   WiFi.persistent(false);
@@ -390,8 +404,19 @@ volatile bool motorRxPending = false;
 uint8_t motorRxMac[6] = {}, motorRxData[ESPNOW_MAX_PACKET_SIZE] = {};
 volatile uint8_t motorRxLength = 0;
 void writeMotor(int16_t pwm) {
-  analogWrite(MOTOR_IN1_PIN, pwm > 0 ? pwm : 0);
-  analogWrite(MOTOR_IN2_PIN, pwm < 0 ? -pwm : 0);
+  if (pwm > 0) {
+    digitalWrite(MOTOR_IN1_PIN, HIGH);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+    analogWrite(MOTOR_ENA_PIN, pwm);
+  } else if (pwm < 0) {
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+    digitalWrite(MOTOR_IN2_PIN, HIGH);
+    analogWrite(MOTOR_ENA_PIN, -pwm);
+  } else {
+    analogWrite(MOTOR_ENA_PIN, 0);
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+  }
 }
 void emergencyStop() { targetPwm = appliedPwm = 0; failsafeActive = true; writeMotor(0); }
 void onMotorEspNowReceive(uint8_t *mac, uint8_t *data, uint8_t length) {
@@ -429,7 +454,8 @@ void processMotorEspNow() {
 void ramp() {
   if (millis() - lastRampAt < RAMP_INTERVAL_MS) return;
   lastRampAt = millis();
-  if (appliedPwm < targetPwm) { appliedPwm += RAMP_STEP; if (appliedPwm > targetPwm) appliedPwm = targetPwm; }
+  if ((appliedPwm > 0 && targetPwm < 0) || (appliedPwm < 0 && targetPwm > 0)) appliedPwm = 0;
+  else if (appliedPwm < targetPwm) { appliedPwm += RAMP_STEP; if (appliedPwm > targetPwm) appliedPwm = targetPwm; }
   else if (appliedPwm > targetPwm) { appliedPwm -= RAMP_STEP; if (appliedPwm < targetPwm) appliedPwm = targetPwm; }
   writeMotor(appliedPwm);
 }
@@ -447,7 +473,7 @@ void sendPairRequest() {
   lastPairAt = millis();
 }
 void setup() {
-  Serial.begin(115200); pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
+  Serial.begin(115200); pinMode(MOTOR_ENA_PIN, OUTPUT); pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
   analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); emergencyStop();
   WiFi.persistent(false); WiFi.mode(WIFI_STA); WiFi.disconnect();
   WiFi.setOutputPower(20.5f); WiFi.setSleepMode(WIFI_NONE_SLEEP); wifi_set_channel(WIFI_CHANNEL);
