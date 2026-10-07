@@ -21,7 +21,7 @@ constexpr uint8_t MOTOR_IN2_PIN = 4;  // GPIO4 / D2  -> L298N IN2
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
 
-constexpr uint8_t SPEED_MIN_PERCENT = 0;
+constexpr uint8_t SPEED_MIN_PERCENT = 1;
 constexpr uint8_t SPEED_MAX_PERCENT = 100;
 constexpr uint8_t SPEED_DEFAULT_PERCENT = 50;
 
@@ -41,11 +41,11 @@ struct CalibrationPoint {
 
 constexpr CalibrationPoint SPEED_CALIBRATION[] = {
   {0, 0.00f, 0.00f},
-  {20, 0.12f, 0.11f},
-  {40, 0.28f, 0.27f},
-  {60, 0.47f, 0.45f},
-  {80, 0.65f, 0.62f},
-  {100, 0.88f, 0.83f},
+  {20, 0.12f, 0.12f},
+  {40, 0.28f, 0.28f},
+  {60, 0.47f, 0.47f},
+  {80, 0.65f, 0.65f},
+  {100, 0.88f, 0.88f},
 };
 constexpr size_t SPEED_CALIBRATION_COUNT = sizeof(SPEED_CALIBRATION) / sizeof(SPEED_CALIBRATION[0]);
 

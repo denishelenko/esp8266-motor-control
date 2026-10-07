@@ -265,9 +265,9 @@ void chooseProgramTarget() {
   static const float p1[] = {-1.70f, 1.70f};
   static const float p2[] = {-0.45f, 0.45f, -0.90f, 0.90f, -1.35f, 1.35f, -1.70f, 1.70f};
   static const float p3[] = {-1.60f, 0.80f, 1.60f, -0.80f, 0.0f};
-  if (activeProgram == 1) { targetM = p1[programStep % 2]; selectedSpeed = 45; }
-  else if (activeProgram == 2) { targetM = p2[programStep % 8]; selectedSpeed = 55; }
-  else if (activeProgram == 3) { targetM = p3[programStep % 5]; selectedSpeed = constrain(72, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT); }
+  if (activeProgram == 1) targetM = p1[programStep % 2];
+  else if (activeProgram == 2) targetM = p2[programStep % 8];
+  else if (activeProgram == 3) targetM = p3[programStep % 5];
   else { targetM = float(random(-170, 171)) / 100.0f; }
   programWaiting = false;
 }
@@ -302,12 +302,10 @@ void updateMotion() {
     setDrive(right ? "right" : "left", selectedSpeed);
     if (step >= fabs(error)) { reachedTarget(); return; }
     positionM += right ? step : -step;
-  } else if (mode == Mode::Jog && driveDirection != "stop") {
-    const bool right = driveDirection == "right";
-    positionM += (right ? 1.0f : -1.0f) * calibratedSpeed(driveSpeed, right) * dt;
-    if (positionM >= limitM()) { positionM = limitM(); stopAll(); }
-    if (positionM <= -limitM()) { positionM = -limitM(); stopAll(); }
   }
+  // Manual left/right movement uses the user's PWM percentage directly.
+  // Without an encoder it does not change the estimated coordinate here.
+  // The dead-man timeout above still stops the motor if browser commands stop.
 }
 
 void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
@@ -341,8 +339,12 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
   }
   if (!strcmp(t, "program")) {
     const uint8_t id = constrain(d["id"] | 0, 1, 4);
-    if (id == 4) selectedSpeed = constrain(d["speed"] | selectedSpeed, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
+    selectedSpeed = constrain(d["speed"] | selectedSpeed, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
     mode = Mode::Program; activeProgram = id; programStep = 0; chooseProgramTarget(); broadcastState(); return;
+  }
+  if (!strcmp(t, "speed")) {
+    selectedSpeed = constrain(d["speed"] | selectedSpeed, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
+    broadcastState(); return;
   }
   if (!strcmp(t, "jog")) {
     const char *dir = d["direction"] | "stop";
