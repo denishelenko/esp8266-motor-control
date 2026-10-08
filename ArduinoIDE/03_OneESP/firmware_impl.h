@@ -104,6 +104,7 @@ uint8_t activeProgram = 0, programStep = 0;
 bool programWaiting = false;
 uint32_t programResumeAt = 0, lastMotionAt = 0, lastBroadcastAt = 0, lastCommandAt = 0, lastJogAt = 0;
 uint32_t sequenceNumber = 0, lastMotorSeenAt = 0, acknowledgedSequence = 0;
+uint32_t lastSerialHeartbeatAt = 0;
 
 #if defined(DEVICE_ROLE_CONTROLLER)
 uint8_t motorMac[6] = {};
@@ -226,6 +227,11 @@ void setDrive(const char *direction, uint8_t speed) {
   driveDirection = direction;
   driveSpeed = speed;
   ++sequenceNumber;
+  Serial.print("[MOTOR] ");
+  Serial.print(driveDirection == "right" ? "ВПРАВО" : driveDirection == "left" ? "ВЛІВО" : "СТОП");
+  Serial.print(" | швидкість: ");
+  Serial.print(driveSpeed);
+  Serial.println('%');
 #if defined(DEVICE_ROLE_CONTROLLER)
   commandDirty = true;
 #endif
@@ -357,6 +363,12 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
 
 void setup() {
   Serial.begin(115200); randomSeed(ESP.getCycleCount());
+  Serial.println();
+#if defined(DEVICE_ROLE_SINGLE)
+  Serial.println("[START] ESP8266: сайт + локальне керування мотором");
+#else
+  Serial.println("[START] ESP8266: сайт + передавач ESP-NOW");
+#endif
 #if defined(DEVICE_ROLE_SINGLE)
   pinMode(MOTOR_ENA_PIN, OUTPUT); pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
   analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); writeLocalMotor(0);
@@ -391,6 +403,21 @@ void loop() {
 #endif
   const uint32_t now = millis();
   if (now - lastBroadcastAt >= UI_BROADCAST_INTERVAL_MS) broadcastState();
+  if (now - lastSerialHeartbeatAt >= 3000) {
+    lastSerialHeartbeatAt = now;
+    Serial.print("[OK] ESP працює | режим: ");
+    Serial.print(modeName());
+    Serial.print(" | мотор: ");
+    Serial.print(driveDirection == "right" ? "ВПРАВО" : driveDirection == "left" ? "ВЛІВО" : "СТОП");
+    Serial.print(" | швидкість: ");
+    Serial.print(driveSpeed);
+    Serial.print('%');
+#if defined(DEVICE_ROLE_CONTROLLER)
+    Serial.print(" | ESP-NOW: ");
+    Serial.print(motorOnline() ? "зв'язок є" : "очікування плати мотора");
+#endif
+    Serial.println();
+  }
 #if defined(DEVICE_ROLE_CONTROLLER)
   if (commandDirty || now - lastCommandAt >= ESPNOW_COMMAND_INTERVAL_MS) sendMotorCommand();
 #endif
@@ -400,6 +427,7 @@ void loop() {
 
 int16_t targetPwm = 0, appliedPwm = 0;
 uint32_t lastPacketAt = 0, lastRampAt = 0, lastStatusAt = 0, lastPairAt = 0, receivedSequence = 0;
+uint32_t lastSerialHeartbeatAt = 0;
 uint8_t controllerMac[6] = {};
 bool controllerPaired = false, failsafeActive = true, haveCommandSequence = false;
 volatile bool motorRxPending = false;
@@ -441,14 +469,25 @@ void processMotorEspNow() {
     if (memcmp(pairing.targetMac, ownMac, 6) != 0) return;
     memcpy(controllerMac, mac, 6);
     controllerPaired = addEspNowPeer(controllerMac);
-    if (controllerPaired) { lastPacketAt = millis(); haveCommandSequence = false; }
+    if (controllerPaired) {
+      lastPacketAt = millis(); haveCommandSequence = false;
+      Serial.println("[ESP-NOW] Зв'язок із головною ESP встановлено");
+    }
     return;
   }
   if (validEspNowHeader(header, EspNowType::Command) && length == sizeof(EspNowCommandPacket) &&
       controllerPaired && memcmp(controllerMac, mac, 6) == 0) {
     const EspNowCommandPacket &command = *reinterpret_cast<EspNowCommandPacket *>(data);
     if (haveCommandSequence && int32_t(command.sequence - receivedSequence) < 0) return;
-    targetPwm = constrain(command.pwm, -int16_t(PWM_MAX), int16_t(PWM_MAX));
+    const int16_t newTargetPwm = constrain(command.pwm, -int16_t(PWM_MAX), int16_t(PWM_MAX));
+    if (newTargetPwm != targetPwm) {
+      targetPwm = newTargetPwm;
+      Serial.print("[MOTOR] ");
+      Serial.print(targetPwm > 0 ? "ВПРАВО" : targetPwm < 0 ? "ВЛІВО" : "СТОП");
+      Serial.print(" | швидкість: ");
+      Serial.print((uint32_t(abs(targetPwm)) * 100U + PWM_MAX / 2U) / PWM_MAX);
+      Serial.println('%');
+    }
     receivedSequence = command.sequence;
     haveCommandSequence = true; lastPacketAt = millis(); failsafeActive = false;
   }
@@ -476,6 +515,9 @@ void sendPairRequest() {
 }
 void setup() {
   Serial.begin(115200); pinMode(MOTOR_ENA_PIN, OUTPUT); pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
+  Serial.println();
+  Serial.println("[START] ESP8266: плата керування мотором");
+  Serial.println("[PINS] ENA=D6, IN1=D7, IN2=D8");
   analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); emergencyStop();
   WiFi.persistent(false); WiFi.mode(WIFI_STA); WiFi.disconnect();
   WiFi.setOutputPower(20.5f); WiFi.setSleepMode(WIFI_NONE_SLEEP); wifi_set_channel(WIFI_CHANNEL);
@@ -484,12 +526,23 @@ void setup() {
 void loop() {
   processMotorEspNow();
   if (controllerPaired && millis() - lastPacketAt > MOTOR_PACKET_TIMEOUT_MS) {
+    Serial.println("[SAFE] Втрачено зв'язок — мотор зупинено");
     emergencyStop(); controllerPaired = false;
   }
   if (!controllerPaired && millis() - lastPairAt >= ESPNOW_PAIR_INTERVAL_MS) sendPairRequest();
   ramp();
   if (controllerPaired && millis() - lastStatusAt >= MOTOR_STATUS_INTERVAL_MS) {
     lastStatusAt = millis(); sendStatus();
+  }
+  if (millis() - lastSerialHeartbeatAt >= 3000) {
+    lastSerialHeartbeatAt = millis();
+    Serial.print("[OK] ESP працює | ESP-NOW: ");
+    Serial.print(controllerPaired ? "зв'язок є" : "пошук головної ESP");
+    Serial.print(" | мотор: ");
+    Serial.print(appliedPwm > 0 ? "ВПРАВО" : appliedPwm < 0 ? "ВЛІВО" : "СТОП");
+    Serial.print(" | фактичний PWM: ");
+    Serial.print((uint32_t(abs(appliedPwm)) * 100U + PWM_MAX / 2U) / PWM_MAX);
+    Serial.println('%');
   }
 }
 

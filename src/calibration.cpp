@@ -16,6 +16,7 @@ uint32_t testDurationMs = 1000;
 int16_t targetPwm = 0;
 int16_t appliedPwm = 0;
 uint32_t lastRampAt = 0;
+uint32_t lastSerialHeartbeatAt = 0;
 
 const char CALIBRATION_PAGE[] PROGMEM = R"HTML(
 <!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -90,6 +91,13 @@ void handleRun() {
   appliedPwm = 0;
   testStartedAt = millis();
   testRunning = true;
+  Serial.print("[MOTOR] ");
+  Serial.print(testRight ? "ВПРАВО" : "ВЛІВО");
+  Serial.print(" | швидкість: ");
+  Serial.print(testPwmPercent);
+  Serial.print("% | час: ");
+  Serial.print(testDurationMs);
+  Serial.println(" мс");
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
@@ -107,6 +115,9 @@ void handleStatus() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.println();
+  Serial.println("[START] ESP8266: ручне калібрування мотора");
+  Serial.println("[PINS] ENA=D6, IN1=D7, IN2=D8");
   pinMode(MOTOR_ENA_PIN, OUTPUT);
   pinMode(MOTOR_IN1_PIN, OUTPUT);
   pinMode(MOTOR_IN2_PIN, OUTPUT);
@@ -124,7 +135,11 @@ void setup() {
 
   server.on("/", [](){ server.send_P(200, "text/html; charset=utf-8", CALIBRATION_PAGE); });
   server.on("/run", handleRun);
-  server.on("/stop", [](){ stopTest(); server.send(200, "application/json", "{\"ok\":true}"); });
+  server.on("/stop", [](){
+    stopTest();
+    Serial.println("[MOTOR] СТОП | команда користувача");
+    server.send(200, "application/json", "{\"ok\":true}");
+  });
   server.on("/status", handleStatus);
   server.onNotFound([](){ server.sendHeader("Location", "/"); server.send(302, "text/plain", ""); });
   server.begin();
@@ -135,6 +150,17 @@ void loop() {
   dns.processNextRequest();
   server.handleClient();
   MDNS.update();
-  if (testRunning && millis() - testStartedAt >= testDurationMs) stopTest();
+  if (testRunning && millis() - testStartedAt >= testDurationMs) {
+    stopTest();
+    Serial.println("[MOTOR] СТОП | тест завершено");
+  }
   updateRamp();
+  if (millis() - lastSerialHeartbeatAt >= 3000) {
+    lastSerialHeartbeatAt = millis();
+    Serial.print("[OK] ESP працює | мотор: ");
+    Serial.print(appliedPwm > 0 ? "ВПРАВО" : appliedPwm < 0 ? "ВЛІВО" : "СТОП");
+    Serial.print(" | фактичний PWM: ");
+    Serial.print((uint32_t(abs(appliedPwm)) * 100U + PWM_MAX / 2U) / PWM_MAX);
+    Serial.println('%');
+  }
 }

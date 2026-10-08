@@ -1,13 +1,13 @@
 #include <Arduino.h>
 
 // NodeMCU ESP8266 -> L298N channel A
-// Remove the ENA jumper before connecting D5.
-// D5 / GPIO14 -> ENA (PWM / motor power)
-// D1 / GPIO5  -> IN1 (direction)
-// D2 / GPIO4  -> IN2 (direction)
-constexpr uint8_t MOTOR_ENA_PIN = 14;
-constexpr uint8_t MOTOR_IN1_PIN = 5;
-constexpr uint8_t MOTOR_IN2_PIN = 4;
+// Remove the ENA jumper before connecting D6.
+// D6 / GPIO12 -> ENA (PWM / motor power)
+// D7 / GPIO13 -> IN1 (direction)
+// D8 / GPIO15 -> IN2 (direction; must stay LOW at boot)
+constexpr uint8_t MOTOR_ENA_PIN = 12;
+constexpr uint8_t MOTOR_IN1_PIN = 13;
+constexpr uint8_t MOTOR_IN2_PIN = 15;
 
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint8_t TEST_POWER_PERCENT = 20;
@@ -43,9 +43,11 @@ void setup() {
 
   Serial.begin(115200);
   Serial.println();
-  Serial.println("Motor test starts in 3 seconds");
+  Serial.println("[START] ESP8266: безкінечний тест мотора");
+  Serial.println("[PINS] ENA=D6, IN1=D7, IN2=D8");
+  Serial.println("[OK] Тест почнеться через 3 секунди");
   delay(START_DELAY_MS);
-  Serial.println("Infinite left/right test started");
+  Serial.println("[OK] Безкінечний тест запущено");
 }
 
 void loop() {
@@ -53,22 +55,26 @@ void loop() {
   uint32_t cycleNumber = 1;
 
   while (true) {
-    Serial.print("Cycle ");
+    Serial.print("[OK] ESP працює | цикл ");
     Serial.println(cycleNumber++);
 
-    Serial.println("LEFT: 2 seconds at 20%");
+    Serial.print("[MOTOR] ВЛІВО | час: 2 с | швидкість: ");
+    Serial.print(TEST_POWER_PERCENT);
+    Serial.println('%');
     runLeft(testPwm);
     delay(RUN_TIME_MS);
 
-    Serial.println("STOP between directions: 1 second");
+    Serial.println("[MOTOR] СТОП | пауза 1 с");
     stopMotor();
     delay(PAUSE_MS);
 
-    Serial.println("RIGHT: 2 seconds at 20%");
+    Serial.print("[MOTOR] ВПРАВО | час: 2 с | швидкість: ");
+    Serial.print(TEST_POWER_PERCENT);
+    Serial.println('%');
     runRight(testPwm);
     delay(RUN_TIME_MS);
 
-    Serial.println("STOP between directions: 1 second");
+    Serial.println("[MOTOR] СТОП | пауза 1 с");
     stopMotor();
     delay(PAUSE_MS);
   }

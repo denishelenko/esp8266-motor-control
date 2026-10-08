@@ -14,9 +14,9 @@ constexpr char CONTROLLER_IP[] = "192.168.4.1";
 
 // ESP8266 NodeMCU -> L298N (channel A).
 // Remove the ENA jumper before connecting MOTOR_ENA_PIN.
-constexpr uint8_t MOTOR_ENA_PIN = 14; // GPIO14 / D5 -> L298N ENA (PWM)
-constexpr uint8_t MOTOR_IN1_PIN = 5;  // GPIO5 / D1  -> L298N IN1
-constexpr uint8_t MOTOR_IN2_PIN = 4;  // GPIO4 / D2  -> L298N IN2
+constexpr uint8_t MOTOR_ENA_PIN = 12; // GPIO12 / D6 -> L298N ENA (PWM)
+constexpr uint8_t MOTOR_IN1_PIN = 13; // GPIO13 / D7 -> L298N IN1
+constexpr uint8_t MOTOR_IN2_PIN = 15; // GPIO15 / D8 -> L298N IN2 (must stay LOW at boot)
 
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
