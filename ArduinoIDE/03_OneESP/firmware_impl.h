@@ -2,6 +2,10 @@
 #include <ESP8266WiFi.h>
 #include "config.h"
 
+#if defined(DEVICE_ROLE_SINGLE)
+#include <core_esp8266_waveform.h>
+#endif
+
 #if defined(DEVICE_ROLE_CONTROLLER) || defined(DEVICE_ROLE_SINGLE)
 #include <ArduinoJson.h>
 #include <WebSocketsServer.h>
@@ -180,6 +184,101 @@ const char *modeName() {
 #if defined(DEVICE_ROLE_SINGLE)
 int16_t localTargetPwm = 0, localAppliedPwm = 0;
 uint32_t lastRampAt = 0;
+uint8_t servoOpenAngle = SERVO_DEFAULT_OPEN_ANGLE;
+uint8_t servoCurrentAngle = SERVO_CLOSED_ANGLE;
+bool servoCycleEnabled = false, servoIsOpen = false;
+enum class ServoPhase : uint8_t { ClosedPause, Opening, OpenPause, Closing };
+ServoPhase servoPhase = ServoPhase::ClosedPause;
+uint32_t servoNextActionAt = 0;
+
+void writeServoPosition(uint8_t angle) {
+  angle = constrain(angle, 0, 180);
+  servoCurrentAngle = angle;
+  const uint32_t periodUs = 1000000UL / SERVO_FREQUENCY_HZ;
+  const uint32_t pulseUs = map(angle, 0, 180, SERVO_MIN_PULSE_US, SERVO_MAX_PULSE_US);
+  startWaveform(SERVO_SIGNAL_PIN, pulseUs, periodUs - pulseUs);
+  Serial.print("[SERVO] кут: ");
+  Serial.print(angle);
+  Serial.println("°");
+}
+
+void stopServoCycle() {
+  const bool wasRunning = servoCycleEnabled || servoIsOpen;
+  if (!wasRunning) return;
+  servoCycleEnabled = false;
+  servoIsOpen = false;
+  servoPhase = ServoPhase::ClosedPause;
+  writeServoPosition(SERVO_CLOSED_ANGLE);
+  Serial.println("[SERVO] цикл зупинено");
+}
+
+void startServoCycle() {
+  servoCycleEnabled = true;
+  servoIsOpen = false;
+  servoPhase = ServoPhase::ClosedPause;
+  writeServoPosition(SERVO_CLOSED_ANGLE);
+  servoNextActionAt = millis() + SERVO_CLOSED_HOLD_MS;
+  Serial.print("[SERVO] цикл запущено, відкриття до ");
+  Serial.print(servoOpenAngle);
+  Serial.println("°");
+}
+
+void updateServoCycle() {
+  if (!servoCycleEnabled || mode != Mode::Program) return;
+  const uint32_t now = millis();
+  if (int32_t(now - servoNextActionAt) < 0) return;
+
+  switch (servoPhase) {
+    case ServoPhase::ClosedPause:
+      servoPhase = ServoPhase::Opening;
+      servoNextActionAt = now;
+      break;
+
+    case ServoPhase::Opening: {
+      const uint8_t steppedAngle = servoCurrentAngle + SERVO_STEP_DEGREES;
+      const uint8_t nextAngle = steppedAngle < servoOpenAngle ? steppedAngle : servoOpenAngle;
+      writeServoPosition(nextAngle);
+      if (nextAngle >= servoOpenAngle) {
+        servoIsOpen = true;
+        servoPhase = ServoPhase::OpenPause;
+        servoNextActionAt = now + SERVO_OPEN_HOLD_MS;
+      } else {
+        servoNextActionAt = now + SERVO_STEP_INTERVAL_MS;
+      }
+      break;
+    }
+
+    case ServoPhase::OpenPause:
+      servoIsOpen = false;
+      servoPhase = ServoPhase::Closing;
+      servoNextActionAt = now;
+      break;
+
+    case ServoPhase::Closing: {
+      const uint8_t nextAngle = servoCurrentAngle > SERVO_STEP_DEGREES
+        ? servoCurrentAngle - SERVO_STEP_DEGREES
+        : SERVO_CLOSED_ANGLE;
+      writeServoPosition(nextAngle);
+      if (nextAngle <= SERVO_CLOSED_ANGLE) {
+        servoPhase = ServoPhase::ClosedPause;
+        servoNextActionAt = now + SERVO_CLOSED_HOLD_MS;
+      } else {
+        servoNextActionAt = now + SERVO_STEP_INTERVAL_MS;
+      }
+      break;
+    }
+  }
+}
+
+const char *servoPhaseName() {
+  switch (servoPhase) {
+    case ServoPhase::Opening: return "opening";
+    case ServoPhase::OpenPause: return "open";
+    case ServoPhase::Closing: return "closing";
+    default: return "closed";
+  }
+}
+
 void writeLocalMotor(int16_t pwm) {
   if (pwm > 0) {
     digitalWrite(MOTOR_IN1_PIN, HIGH);
@@ -249,6 +348,11 @@ String stateJson() {
   d["mode"] = modeName(); d["program"] = activeProgram; d["motorOnline"] = motorOnline();
 #if defined(DEVICE_ROLE_SINGLE)
   d["transport"] = "local";
+  d["servoAngle"] = servoOpenAngle;
+  d["servoCurrentAngle"] = servoCurrentAngle;
+  d["servoEnabled"] = servoCycleEnabled;
+  d["servoOpen"] = servoIsOpen;
+  d["servoPhase"] = servoPhaseName();
 #else
   d["transport"] = "esp-now";
 #endif
@@ -264,7 +368,11 @@ void broadcastState() {
 }
 void stopAll() {
   mode = Mode::Idle; activeProgram = 0; programWaiting = false; targetM = positionM;
-  setDrive("stop", 0); broadcastState();
+  setDrive("stop", 0);
+#if defined(DEVICE_ROLE_SINGLE)
+  stopServoCycle();
+#endif
+  broadcastState();
 }
 
 void chooseProgramTarget() {
@@ -339,6 +447,9 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
   if (!strcmp(t, "stop")) { stopAll(); return; }
   if (!strcmp(t, "zero")) { stopAll(); positionM = targetM = 0; broadcastState(); return; }
   if (!strcmp(t, "target")) {
+#if defined(DEVICE_ROLE_SINGLE)
+    stopServoCycle();
+#endif
     activeProgram = 0; programWaiting = false; mode = Mode::Target;
     targetM = constrain(d["position"] | 0.0f, -limitM(), limitM());
     selectedSpeed = constrain(d["speed"] | SPEED_DEFAULT_PERCENT, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT); broadcastState(); return;
@@ -346,7 +457,34 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
   if (!strcmp(t, "program")) {
     const uint8_t id = constrain(d["id"] | 0, 1, 4);
     selectedSpeed = constrain(d["speed"] | selectedSpeed, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
-    mode = Mode::Program; activeProgram = id; programStep = 0; chooseProgramTarget(); broadcastState(); return;
+    mode = Mode::Program; activeProgram = id; programStep = 0;
+#if defined(DEVICE_ROLE_SINGLE)
+    startServoCycle();
+#endif
+    chooseProgramTarget(); broadcastState(); return;
+  }
+  if (!strcmp(t, "servo")) {
+#if defined(DEVICE_ROLE_SINGLE)
+    const bool enabled = d["enabled"] | true;
+    if (!enabled) {
+      stopServoCycle();
+    } else {
+      const uint8_t requestedAngle = constrain(d["angle"] | SERVO_DEFAULT_OPEN_ANGLE, 0, 180);
+      servoOpenAngle = requestedAngle >= 68 ? 90 : 45;
+      if (mode == Mode::Program) {
+        if (!servoCycleEnabled) startServoCycle();
+        else {
+          servoIsOpen = false;
+          servoPhase = servoCurrentAngle > servoOpenAngle
+            ? ServoPhase::Closing
+            : ServoPhase::Opening;
+          servoNextActionAt = millis();
+        }
+      }
+    }
+    broadcastState();
+#endif
+    return;
   }
   if (!strcmp(t, "speed")) {
     selectedSpeed = constrain(d["speed"] | selectedSpeed, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
@@ -355,6 +493,9 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
   if (!strcmp(t, "jog")) {
     const char *dir = d["direction"] | "stop";
     if (!strcmp(dir, "stop")) { stopAll(); return; }
+#if defined(DEVICE_ROLE_SINGLE)
+    stopServoCycle();
+#endif
     mode = Mode::Jog; activeProgram = 0; lastJogAt = millis();
     selectedSpeed = constrain(d["speed"] | SPEED_DEFAULT_PERCENT, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
     setDrive(!strcmp(dir, "right") ? "right" : "left", selectedSpeed); return;
@@ -372,6 +513,9 @@ void setup() {
 #if defined(DEVICE_ROLE_SINGLE)
   pinMode(MOTOR_ENA_PIN, OUTPUT); pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
   analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); writeLocalMotor(0);
+  pinMode(SERVO_SIGNAL_PIN, OUTPUT); digitalWrite(SERVO_SIGNAL_PIN, LOW);
+  writeServoPosition(SERVO_CLOSED_ANGLE);
+  Serial.println("[PINS] D1=ENA, D2=IN1, D5=IN2, D6=SERVO");
 #endif
   WiFi.persistent(false);
 #if defined(DEVICE_ROLE_CONTROLLER)
@@ -400,6 +544,7 @@ void loop() {
   updateMotion();
 #if defined(DEVICE_ROLE_SINGLE)
   updateLocalRamp();
+  updateServoCycle();
 #endif
   const uint32_t now = millis();
   if (now - lastBroadcastAt >= UI_BROADCAST_INTERVAL_MS) broadcastState();
