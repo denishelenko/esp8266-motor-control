@@ -12,15 +12,17 @@ constexpr uint16_t HTTP_PORT = 80;
 constexpr uint16_t WEBSOCKET_PORT = 81;
 constexpr char CONTROLLER_IP[] = "192.168.4.1";
 
-// ESP8266 NodeMCU -> L298N channel A with two DC motors connected in parallel.
+// Wemos D1 Mini Pro (ESP8266) -> L298N channel A with two DC motors
+// connected in parallel. D3 (GPIO0) and D4 (GPIO2) are boot pins: neither
+// connected module may pull them LOW while the Wemos is starting.
 // Remove the ENA jumper before connecting MOTOR_ENA_PIN.
 constexpr uint8_t MOTOR_ENA_PIN = 5;  // GPIO5 / D1  -> L298N ENA (PWM)
 constexpr uint8_t MOTOR_IN1_PIN = 4;  // GPIO4 / D2  -> L298N IN1
-constexpr uint8_t MOTOR_IN2_PIN = 14; // GPIO14 / D5 -> L298N IN2
+constexpr uint8_t MOTOR_IN2_PIN = 0;  // GPIO0 / D3  -> L298N IN2
 
 // SERVOMY SDS2601-26G signal. Power the servo from a separate 5-8.4 V supply
 // and connect the servo supply ground to ESP8266 GND.
-constexpr uint8_t SERVO_SIGNAL_PIN = 12; // GPIO12 / D6 -> yellow signal wire
+constexpr uint8_t SERVO_SIGNAL_PIN = 2;  // GPIO2 / D4 -> yellow signal wire
 constexpr uint8_t SERVO_CLOSED_ANGLE = 0;
 constexpr uint8_t SERVO_DEFAULT_OPEN_ANGLE = 45;
 constexpr uint16_t SERVO_MIN_PULSE_US = 520;

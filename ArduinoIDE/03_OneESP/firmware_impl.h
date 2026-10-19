@@ -515,7 +515,7 @@ void setup() {
   analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); writeLocalMotor(0);
   pinMode(SERVO_SIGNAL_PIN, OUTPUT); digitalWrite(SERVO_SIGNAL_PIN, LOW);
   writeServoPosition(SERVO_CLOSED_ANGLE);
-  Serial.println("[PINS] D1=ENA, D2=IN1, D5=IN2, D6=SERVO");
+  Serial.println("[PINS] D1=ENA, D2=IN1, D3=IN2, D4=SERVO");
 #endif
   WiFi.persistent(false);
 #if defined(DEVICE_ROLE_CONTROLLER)
