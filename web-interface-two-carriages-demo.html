@@ -67,38 +67,7 @@ right:10px;
 top:11px;
 font-size:.67rem;
 color:var(--muted)}
-.cart{position:relative;
-width:130px;
-height:62px;
-margin:10px auto 0}
-.cart .body{position:absolute;
-left:17px;
-top:9px;
-width:96px;
-height:33px;
-border-radius:8px 8px 4px 4px;
-background:#080a09;
-border:2px solid #6e766f;
-box-shadow:inset 0 6px #202623}
-.cart .mast{position:absolute;
-left:60px;
-top:38px;
-width:10px;
-height:16px;
-background:#070807}
-.cart .wheel{position:absolute;
-top:43px;
-width:23px;
-height:23px;
-border-radius:50%;
-background:#080a09;
-border:3px solid #71766d}
-.cart .w1{left:19px}
-.cart .w2{right:19px}
-.cart .hub{position:absolute;
-inset:6px;
-border-radius:50%;
-background:#343a35}
+.cart{display:block;width:158px;height:76px;margin:5px auto 0}.cart .frame{fill:#090b0a;stroke:#92998d;stroke-width:3}.cart .plate{fill:#161b18;stroke:#5e6a61;stroke-width:2}.cart .roller{fill:#080909;stroke:#a1a89e;stroke-width:4}.cart .hub{fill:#444c45;stroke:#171b18;stroke-width:3}.cart .lens{fill:#e4e5dd;stroke:#161a18;stroke-width:4}.cart .lens-core{fill:#303735}.cart .bracket{fill:#090a09;stroke:#747c73;stroke-width:2}
 .link{display:flex;
 align-items:center;
 justify-content:center;
@@ -133,15 +102,13 @@ width:2px;
 height:28px;
 background:var(--paper)}
 .ipsc{position:absolute;
-top:4px;
-width:35px;
-height:47px;
+top:0;
+width:44px;
+height:58px;
 transform:translateX(-50%);
 filter:drop-shadow(0 2px 4px #000);
 pointer-events:none}
-.ipsc path{fill:var(--accent);
-stroke:var(--paper);
-stroke-width:3}
+.ipsc .target-outline{fill:var(--paper);stroke:var(--ink);stroke-width:5}.ipsc .target-zone{fill:none;stroke:var(--mid);stroke-width:4}.ipsc text{fill:var(--mid);font:700 21px system-ui;text-anchor:middle}
 .targetText{position:absolute;
 top:56px;
 transform:translateX(-50%);
@@ -239,38 +206,12 @@ margin:-1px auto -3px}
 <button class="carriage active" data-carriage="1">
 <span class="name">Каретка 1 · ESP32</span>
 <span class="state">онлайн</span>
-<div class="cart">
-<i class="body">
-</i>
-<i class="mast">
-</i>
-<i class="wheel w1">
-<b class="hub">
-</b>
-</i>
-<i class="wheel w2">
-<b class="hub">
-</b>
-</i>
-</div>
+<svg class="cart" viewBox="0 0 210 100" aria-label="чорна каретка"><path class="bracket" d="M97 60h16v26H97z"/><path class="frame" d="M34 21h142l11 13-9 30H32l-9-30z"/><path class="plate" d="M47 31h116l7 20H40z"/><circle class="lens" cx="51" cy="41" r="12"/><circle class="lens-core" cx="51" cy="41" r="5"/><circle class="lens" cx="159" cy="41" r="12"/><circle class="lens-core" cx="159" cy="41" r="5"/><circle class="roller" cx="49" cy="78" r="17"/><circle class="hub" cx="49" cy="78" r="7"/><circle class="roller" cx="161" cy="78" r="17"/><circle class="hub" cx="161" cy="78" r="7"/></svg>
 </button>
 <button class="carriage" data-carriage="2">
 <span class="name">Каретка 2 · NodeMCU</span>
 <span class="state">онлайн</span>
-<div class="cart">
-<i class="body">
-</i>
-<i class="mast">
-</i>
-<i class="wheel w1">
-<b class="hub">
-</b>
-</i>
-<i class="wheel w2">
-<b class="hub">
-</b>
-</i>
-</div>
+<svg class="cart" viewBox="0 0 210 100" aria-label="чорна каретка"><path class="bracket" d="M97 60h16v26H97z"/><path class="frame" d="M34 21h142l11 13-9 30H32l-9-30z"/><path class="plate" d="M47 31h116l7 20H40z"/><circle class="lens" cx="51" cy="41" r="12"/><circle class="lens-core" cx="51" cy="41" r="5"/><circle class="lens" cx="159" cy="41" r="12"/><circle class="lens-core" cx="159" cy="41" r="5"/><circle class="roller" cx="49" cy="78" r="17"/><circle class="hub" cx="49" cy="78" r="7"/><circle class="roller" cx="161" cy="78" r="17"/><circle class="hub" cx="161" cy="78" r="7"/></svg>
 </button>
 </section>
 <div class="link">
@@ -285,8 +226,10 @@ margin:-1px auto -3px}
 </div>
 <div class="centre">
 </div>
-<svg id="ipsc" class="ipsc" viewBox="0 0 100 130" style="left:50%">
-<path d="M25 4h50l14 22-12 30v61l-12 9H35l-12-9V56L11 26z"/>
+<svg id="ipsc" class="ipsc" viewBox="0 0 400 400" style="left:50%" aria-label="IPSC мішень">
+<path class="target-outline" d="M148 28H252L336 140V254L252 370H148L64 254V140z"/>
+<path class="target-zone" d="M125 60H275L290 142V225L235 300H165L110 225V142z"/><path class="target-zone" d="M170 82H230L246 150V197L215 238H185L154 197V150z"/>
+<text x="200" y="173">A</text><text x="124" y="180">C</text><text x="276" y="180">C</text><text x="72" y="180">D</text><text x="328" y="180">D</text>
 </svg>
 <span id="targetText" class="targetText" style="left:50%">ціль 0.00 м</span>
 <input id="target" class="target" type="range" min="-1.8" max="1.8" step="0.05" value="0">
