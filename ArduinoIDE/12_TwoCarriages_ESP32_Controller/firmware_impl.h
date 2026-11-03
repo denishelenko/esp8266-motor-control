@@ -41,7 +41,7 @@ IPAddress nodeIp;
 bool nodeKnown = false;
 uint32_t nodeSeenAt = 0, commandSequence = 0, lastCommandSentAt = 0, lastBroadcastAt = 0;
 int8_t nodeRssi = -127;
-bool carriagesLinked = true;
+bool carriagesLinked = false;
 
 const char *modeName(MotionMode mode) {
   switch (mode) {

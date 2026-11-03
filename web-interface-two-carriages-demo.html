@@ -29,8 +29,8 @@ border:1px solid var(--line);
 border-radius:24px;
 padding:20px;
 box-shadow:0 22px 60px #0008}
-header{display:flex;
-justify-content:space-between;
+header{display:grid;
+grid-template-columns:1fr auto 1fr;
 align-items:center;
 gap:12px}
 h1{font-size:1.25rem;
@@ -39,7 +39,8 @@ margin:0}
 color:var(--muted);
 display:flex;
 gap:7px;
-align-items:center}
+align-items:center;
+justify-self:end}
 .dot{width:9px;
 height:9px;
 border-radius:50%;
@@ -68,24 +69,42 @@ color:var(--muted);
 display:flex;
 align-items:center;
 gap:5px}
+.signal{display:flex;
+align-items:flex-end;
+gap:2px;
+height:14px}
+.signal b{display:block;
+width:3px;
+background:var(--mid);
+border-radius:1px;
+opacity:.3}
+.signal b:nth-child(1){height:5px}.signal b:nth-child(2){height:8px}.signal b:nth-child(3){height:11px}.signal b:nth-child(4){height:14px}
+.state.level-1 .signal b:nth-child(1),.state.level-2 .signal b:nth-child(-n+2),.state.level-3 .signal b:nth-child(-n+3),.state.level-4 .signal b{background:var(--accent);opacity:1}
+.state.off .signal b{background:#B75E50;opacity:.25}
 
 
 .cart{display:block;width:158px;height:76px;margin:5px auto 0}.cart .cable{stroke:#c7c8bf;stroke-width:4;stroke-linecap:round}.cart .frame{fill:#090b0a;stroke:#92998d;stroke-width:3}.cart .plate{fill:#161b18;stroke:#5e6a61;stroke-width:2}.cart .roller{fill:#080909;stroke:#a1a89e;stroke-width:4}.cart .hub{fill:#444c45;stroke:#171b18;stroke-width:3}.cart .lens{fill:#e4e5dd;stroke:#161a18;stroke-width:4}.cart .lens-core{fill:#303735}.cart .bracket{fill:#090a09;stroke:#747c73;stroke-width:2}
-.link{display:flex;
-align-items:center;
-justify-content:center;
-gap:10px;
-margin:4px 0 17px}
-.chain{border:1px solid var(--mid);
-background:var(--ink);
-color:var(--paper);
+.chain{width:52px;
+height:26px;
+display:grid;
+place-items:center;
+padding:0;
+border:1px solid var(--mid);
+background:var(--mid);
+color:#fff;
 border-radius:999px;
-padding:10px 15px;
-font-weight:800;
 cursor:pointer}
-.chain.active{background:var(--accent);
-color:var(--ink);
-border-color:var(--accent)}
+.chain svg{display:block;
+width:45px;
+height:16px;
+fill:currentColor}
+.chain .linkedIcon{display:none}
+.chain.active .linkedIcon{display:inline}
+.chain.active .brokenIcon{display:none}
+.chain.active{color:#fff;
+border-color:var(--ink);
+background:var(--ink);
+box-shadow:0 0 11px #9FA38B44}
 .readout{text-align:center;
 margin:8px 0}
 .readout strong{font-size:2.55rem;
@@ -112,11 +131,19 @@ transform:translateX(-50%);
 filter:drop-shadow(0 2px 4px #000);
 pointer-events:none}
 .ipsc .target-outline{fill:var(--paper);stroke:var(--ink);stroke-width:5}.ipsc .target-zone{fill:none;stroke:var(--mid);stroke-width:4}.ipsc text{fill:var(--mid);font:700 21px system-ui;text-anchor:middle}
-.targetText{position:absolute;
-top:56px;
-transform:translateX(-50%);
-font-size:.72rem;
-color:var(--muted)}
+.targetDot{position:absolute;
+top:30px;
+width:10px;
+height:10px;
+margin-left:-5px;
+border-radius:50%;
+background:var(--accent);
+border:2px solid var(--paper);
+box-shadow:0 0 8px #9FA38B99;
+pointer-events:none;
+z-index:1}
+.ipsc{z-index:2}
+input[type=range].target{z-index:3}
 input[type=range].target{position:absolute;
 left:0;
 top:4px;
@@ -199,6 +226,7 @@ margin:-1px auto -3px}
 <main>
 <header>
 <h1>Дві каретки</h1>
+<button id="link" class="chain" aria-pressed="false" title="Окремі команди для кожної каретки"><svg viewBox="0 0 100 34" aria-hidden="true"><path class="linkedIcon" fill-rule="evenodd" d="M0.4,12.5L0.8,18.6L2.8,22.9L6.6,26.5L12.2,28.7L31.9,28.5L35.9,27.6L36.6,26.8L37.2,27.0L36.7,27.6L40.5,28.9L60.3,28.7L63.7,28.0L64.9,27.1L65.6,27.2L64.9,27.7L67.7,28.7L87.5,28.5L91.5,27.6L95.6,24.9L98.5,21.5L99.6,19.2L99.7,10.8L97.7,5.8L93.5,2.0L89.1,0.3L69.4,0.3L64.6,1.5L61.9,0.5L50.1,0.3L40.1,0.6L37.3,1.8L33.5,0.3L21.8,0.0L11.8,0.5L7.7,1.8L4.2,4.4L2.2,7.3ZM37.1,9.0L38.4,11.4L38.7,15.3L37.5,19.2L36.3,20.1L34.8,17.1L34.8,11.6L35.7,10.0ZM64.4,8.6L66.2,10.5L67.1,14.1L66.2,18.6L64.8,20.5L62.9,19.1L62.0,16.8L62.0,11.4ZM58.2,6.3L55.9,12.5L56.2,18.0L58.2,22.4L41.9,23.2L44.1,19.2L44.2,16.5L44.1,9.9L42.4,6.7ZM70.5,6.5L87.3,6.1L90.0,6.8L92.8,9.1L93.9,11.4L94.3,15.3L92.8,19.7L90.9,21.3L87.7,22.3L71.1,22.5L70.3,23.4L72.3,19.5L72.5,11.0ZM31.4,6.2L28.7,12.8L29.0,18.2L30.4,22.3L13.5,22.5L10.9,22.2L7.3,19.1L6.5,16.8L6.5,11.4L7.0,10.3L11.3,6.6Z"/><path class="brokenIcon" d="M44.0,10.7L44.0,16.7L55.8,16.7L55.6,10.4ZM58.1,9.8L58.1,17.6L59.8,21.2L62.8,24.5L66.2,26.4L82.4,31.8L86.8,32.1L91.8,30.9L94.5,29.2L96.6,27.0L99.0,22.5L99.0,14.5L97.3,10.9L94.3,7.6L91.3,5.9L75.3,0.6L68.7,0.2L65.3,1.3L70.2,3.0L73.7,6.5L88.5,11.2L91.6,13.2L93.3,16.2L93.6,20.0L91.9,23.4L89.0,25.7L84.1,26.1L67.9,20.7L65.7,19.2L63.9,16.6L63.8,11.5ZM54.9,0.2L53.0,5.8L66.5,10.3L67.0,12.2L65.6,13.7L65.9,15.6L67.9,18.3L69.1,18.4L70.2,17.8L71.9,15.9L73.0,13.3L73.0,10.3L71.0,6.4L67.5,4.2ZM45.0,0.2L32.2,4.2L29.0,6.2L27.0,9.5L26.9,13.3L29.2,17.5L31.4,18.4L33.2,17.0L34.2,13.8L32.7,12.2L33.5,10.2L46.8,5.8ZM41.7,9.8L36.1,11.5L35.9,16.6L34.2,19.2L31.9,20.7L15.6,26.1L10.8,25.7L7.5,22.9L6.2,20.0L6.2,17.1L8.1,13.2L11.3,11.2L26.1,6.5L29.2,3.3L34.4,1.3L31.0,0.2L24.5,0.6L8.5,5.9L5.5,7.6L2.7,10.7L1.0,13.9L0.4,16.5L0.4,20.6L1.0,23.2L2.7,26.4L5.3,29.2L10.4,31.8L17.3,31.8L35.8,25.3L39.4,22.1L41.3,18.7L42.2,15.6Z"/></svg></button>
 <div class="status">
 <i class="dot">
 </i>
@@ -207,17 +235,14 @@ margin:-1px auto -3px}
 </header>
 <section class="carriages">
 <button class="carriage active" data-carriage="1">
-<span class="state online">▂▄▆█ онлайн</span>
+<span class="state online level-4"><i class="signal"><b></b><b></b><b></b><b></b></i><span class="stateLabel">онлайн</span></span>
 <svg class="cart" viewBox="0 0 210 100" aria-label="підвісна каретка на тросі"><path class="cable" d="M4 43H206"/><path class="bracket" d="M48 42h18l12 23h54l12-23h18l-14 43H62z"/><path class="frame" d="M61 58h88l13 24-11 9H59l-11-9z"/><path class="plate" d="M75 67h60l8 11H67z"/><circle class="roller" cx="55" cy="27" r="18"/><circle class="hub" cx="55" cy="27" r="7"/><circle class="roller" cx="155" cy="27" r="18"/><circle class="hub" cx="155" cy="27" r="7"/><circle class="lens" cx="83" cy="75" r="9"/><circle class="lens-core" cx="83" cy="75" r="4"/><circle class="lens" cx="127" cy="75" r="9"/><circle class="lens-core" cx="127" cy="75" r="4"/></svg>
 </button>
 <button class="carriage" data-carriage="2">
-<span class="state online">▂▄▆█ онлайн</span>
+<span class="state online level-4"><i class="signal"><b></b><b></b><b></b><b></b></i><span class="stateLabel">онлайн</span></span>
 <svg class="cart" viewBox="0 0 210 100" aria-label="підвісна каретка на тросі"><path class="cable" d="M4 43H206"/><path class="bracket" d="M48 42h18l12 23h54l12-23h18l-14 43H62z"/><path class="frame" d="M61 58h88l13 24-11 9H59l-11-9z"/><path class="plate" d="M75 67h60l8 11H67z"/><circle class="roller" cx="55" cy="27" r="18"/><circle class="hub" cx="55" cy="27" r="7"/><circle class="roller" cx="155" cy="27" r="18"/><circle class="hub" cx="155" cy="27" r="7"/><circle class="lens" cx="83" cy="75" r="9"/><circle class="lens-core" cx="83" cy="75" r="4"/><circle class="lens" cx="127" cy="75" r="9"/><circle class="lens-core" cx="127" cy="75" r="4"/></svg>
 </button>
 </section>
-<div class="link">
-<button id="link" class="chain active">⌁ Каретки синхронізовані</button>
-</div>
 <div class="readout">
 <strong id="pos">0.00</strong> <span>м від центру · <b id="which">каретка 1</b>
 </span>
@@ -232,7 +257,7 @@ margin:-1px auto -3px}
 <path class="target-zone" d="M125 60H275L290 142V225L235 300H165L110 225V142z"/><path class="target-zone" d="M170 82H230L246 150V197L215 238H185L154 197V150z"/>
 <text x="200" y="173">A</text><text x="124" y="180">C</text><text x="276" y="180">C</text><text x="72" y="180">D</text><text x="328" y="180">D</text>
 </svg>
-<span id="targetText" class="targetText" style="left:50%">ціль 0.00 м</span>
+<i id="targetDot" class="targetDot" style="left:50%" aria-label="вибрана точка"></i>
 <input id="target" class="target" type="range" min="-7.8" max="7.8" step="0.05" value="0">
 <div class="ticks">
 <span>−7.8 м</span>
@@ -264,7 +289,7 @@ margin:-1px auto -3px}
 </main>
 <script>
 const $=x=>document.getElementById(x),all=q=>[...document.querySelectorAll(q)];
-let selected=0,linked=true,drag=false,last=performance.now(),jog=0;
+let selected=0,linked=false,drag=false,last=performance.now(),jog=0;
 const c=[{p:0,t:0,s:50,prog:0}
 ,{p:0,t:0,s:50,prog:0}
 ];
@@ -275,8 +300,7 @@ function redraw(){let x=c[selected];
 $('pos').textContent=x.p.toFixed(2);
 $('which').textContent='каретка '+(selected+1);
 $('ipsc').style.left=pct(x.p);
-$('targetText').style.left=pct(x.t);
-$('targetText').textContent='ціль '+x.t.toFixed(2)+' м';
+$('targetDot').style.left=pct(x.t);
 if(!drag)$('target').value=x.t;
 $('speed').value=x.s;
 $('speedOut').textContent=x.s+'%';
@@ -297,7 +321,8 @@ redraw()}
 );
 $('link').onclick=()=>{linked=!linked;
 $('link').classList.toggle('active',linked);
-$('link').textContent=linked?'⌁ Каретки синхронізовані':'⌁ Окреме керування'}
+$('link').setAttribute('aria-pressed',linked);
+$('link').title=linked?'Синхронні команди для обох кареток':'Окремі команди для кожної каретки'}
 ;
 $('speed').oninput=()=>{affected(i=>c[i].s=+$('speed').value);
 redraw()}
