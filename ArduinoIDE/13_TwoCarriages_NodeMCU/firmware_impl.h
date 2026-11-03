@@ -13,6 +13,7 @@ struct __attribute__((packed)) CarriagePacket {
   uint8_t carriageId;
   uint32_t sequence;
   int16_t pwm;
+  int8_t rssi;
 };
 
 WiFiUDP udp;
@@ -40,7 +41,8 @@ void writeMotor(int16_t pwm) {
 
 void sendPacket(PacketType type) {
   if (WiFi.status() != WL_CONNECTED) return;
-  CarriagePacket packet = {PACKET_MAGIC, PACKET_VERSION, type, CARRIAGE_ID, lastSequence, appliedPwm};
+  CarriagePacket packet = {PACKET_MAGIC, PACKET_VERSION, type, CARRIAGE_ID, lastSequence,
+                           appliedPwm, int8_t(WiFi.RSSI())};
   udp.beginPacket(CONTROLLER_IP, CARRIAGE_UDP_PORT);
   udp.write(reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
   udp.endPacket();

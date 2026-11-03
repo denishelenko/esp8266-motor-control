@@ -17,6 +17,7 @@ struct __attribute__((packed)) CarriagePacket {
   uint8_t carriageId;
   uint32_t sequence;
   int16_t pwm;
+  int8_t rssi;
 };
 
 enum class MotionMode : uint8_t { Idle, Target, Program, Jog };
@@ -39,6 +40,7 @@ CarriageState carriages[2];
 IPAddress nodeIp;
 bool nodeKnown = false;
 uint32_t nodeSeenAt = 0, commandSequence = 0, lastCommandSentAt = 0, lastBroadcastAt = 0;
+int8_t nodeRssi = -127;
 bool carriagesLinked = true;
 
 const char *modeName(MotionMode mode) {
@@ -72,7 +74,7 @@ void writeLocalMotor(int16_t pwm) {
 void sendRemoteCommand() {
   if (!nodeOnline()) return;
   CarriagePacket packet = {PACKET_MAGIC, PACKET_VERSION, PacketType::Command, 2,
-                           ++commandSequence, carriages[1].outputPwm};
+                           ++commandSequence, carriages[1].outputPwm, 0};
   udp.beginPacket(nodeIp, CARRIAGE_UDP_PORT);
   udp.write(reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
   udp.endPacket();
@@ -88,6 +90,7 @@ void receiveNodePackets() {
   nodeIp = udp.remoteIP();
   nodeKnown = true;
   nodeSeenAt = millis();
+  nodeRssi = packet.rssi;
 }
 
 void setCarriageTarget(uint8_t index, float target, uint8_t speed) {
@@ -167,6 +170,7 @@ void broadcastState() {
     c["program"] = carriages[i].program;
     c["mode"] = modeName(carriages[i].mode);
     c["online"] = i == 0 || nodeOnline();
+    c["rssi"] = i == 0 ? -45 : nodeRssi;
   }
   String message;
   serializeJson(doc, message);

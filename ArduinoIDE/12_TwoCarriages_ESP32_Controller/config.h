@@ -19,7 +19,11 @@ constexpr uint8_t MOTOR_IN2_PIN = 6;
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
 
-constexpr float TRACK_LIMIT_M = 1.80f;
+// A 16 m cable has its virtual centre at 0. A 20 cm software margin keeps
+// commands away from both physical ends, therefore the UI range is -7.8..+7.8 m.
+constexpr float TRACK_LENGTH_M = 16.0f;
+constexpr float SAFE_MARGIN_M = 0.20f;
+constexpr float TRACK_LIMIT_M = TRACK_LENGTH_M * 0.5f - SAFE_MARGIN_M;
 constexpr float POSITION_TOLERANCE_M = 0.02f;
 constexpr float ESTIMATED_SPEED_AT_100_PERCENT_MPS = 0.80f;
 constexpr uint32_t COMMAND_INTERVAL_MS = 50;
