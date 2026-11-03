@@ -49,18 +49,22 @@ constexpr uint8_t LIGHT_PIN = 13;
 #endif
 
 // SERVOMY SDS2601-26G: power red from a stable 5-8.4 V source and connect
-// brown to the same GND as ESP8266 and L298N.
+// brown to the same GND as ESP8266 and L298N. ESP8266 uses Servo.h, matching
+// the known working standalone myServo.write(angle) test.
+// UI angles are the real, physical angles of this particular mechanism.
+// Its electronics need a command twice as large: command 90° = physical 45°
+// and command 180° = physical 90°.
 constexpr uint8_t SERVO_CLOSED_ANGLE = 0;
+constexpr uint8_t SERVO_PHYSICAL_MAX_ANGLE = 90;
+constexpr uint8_t SERVO_COMMAND_PER_PHYSICAL_DEGREE = 2;
 constexpr uint8_t SERVO_DEFAULT_OPEN_ANGLE = 45;
 constexpr uint16_t SERVO_MIN_PULSE_US = 520;
 constexpr uint16_t SERVO_MAX_PULSE_US = 2520;
 constexpr uint16_t SERVO_FREQUENCY_HZ = 333;
-// Smooth motion: one commanded degree per step. After reaching an endpoint,
-// the servo stays open for 1 s and closed for 0.5 s.
-constexpr uint8_t SERVO_STEP_DEGREES = 1;
-constexpr uint32_t SERVO_STEP_INTERVAL_MS = 20;
+// The servo is commanded directly to an endpoint. After reaching it, it stays
+// open for 1 s and closed for 2 s. Actual travel speed is set by the servo.
 constexpr uint32_t SERVO_OPEN_HOLD_MS = 1000;
-constexpr uint32_t SERVO_CLOSED_HOLD_MS = 500;
+constexpr uint32_t SERVO_CLOSED_HOLD_MS = 2000;
 
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
@@ -123,6 +127,8 @@ static_assert(MOTOR_ENA_PIN != MOTOR_IN1_PIN && MOTOR_ENA_PIN != MOTOR_IN2_PIN &
 static_assert(safeOutputPin(SERVO_SIGNAL_PIN) && SERVO_SIGNAL_PIN != MOTOR_ENA_PIN &&
               SERVO_SIGNAL_PIN != MOTOR_IN1_PIN && SERVO_SIGNAL_PIN != MOTOR_IN2_PIN,
               "Servo pin must be safe and separate from motor");
+static_assert(SERVO_PHYSICAL_MAX_ANGLE * SERVO_COMMAND_PER_PHYSICAL_DEGREE <= 180,
+              "Servo physical-to-command ratio exceeds the command range");
 static_assert(SERVO_FREQUENCY_HZ > 0 && 1000000UL / SERVO_FREQUENCY_HZ > SERVO_MAX_PULSE_US,
               "Servo pulse must fit inside its period");
 

@@ -41,6 +41,11 @@ inline bool servoPulse(uint32_t pulseUs) {
   const uint32_t duty = (uint64_t(pulseUs) * SERVO_FREQUENCY_HZ * 16384ULL + 500000ULL) / 1000000ULL;
   return ledcWrite(SERVO_SIGNAL_PIN, duty);
 }
+inline bool servoWriteAngle(uint8_t angle) {
+  const uint32_t pulseUs = map(constrain(angle, 0, 180), 0, 180,
+                               SERVO_MIN_PULSE_US, SERVO_MAX_PULSE_US);
+  return servoPulse(pulseUs);
+}
 inline void servoDetach() {
   if (servoAttached()) ledcDetach(SERVO_SIGNAL_PIN);
   servoAttached() = false;
@@ -50,7 +55,7 @@ inline void servoDetach() {
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <DNSServer.h>
-#include <core_esp8266_waveform.h>
+#include <Servo.h>
 using LocalWebServer = ESP8266WebServer;
 using LocalDnsServer = DNSServer;
 inline void disableWifiSleep() { WiFi.setSleepMode(WIFI_NONE_SLEEP); }
@@ -63,10 +68,16 @@ inline bool motorPwmBegin() {
   analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); return true;
 }
 inline void motorPwmWrite(uint16_t duty) { analogWrite(MOTOR_ENA_PIN, duty); }
-inline bool servoPulse(uint32_t pulseUs) {
-  return startWaveform(SERVO_SIGNAL_PIN, pulseUs, 1000000UL / SERVO_FREQUENCY_HZ - pulseUs);
+inline Servo &siteServo() { static Servo servo; return servo; }
+inline bool servoWriteAngle(uint8_t angle) {
+  Servo &servo = siteServo();
+  if (!servo.attached()) servo.attach(SERVO_SIGNAL_PIN);
+  if (!servo.attached()) return false;
+  // Same API and signal generation as the known working myServo.write() test.
+  servo.write(constrain(angle, 0, 180));
+  return true;
 }
-inline void servoDetach() { stopWaveform(SERVO_SIGNAL_PIN); }
+inline void servoDetach() { if (siteServo().attached()) siteServo().detach(); }
 #else
 #error Unsupported board
 #endif

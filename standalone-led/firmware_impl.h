@@ -99,11 +99,11 @@ enum class ServoPhase : uint8_t { ClosedPause, Opening, OpenPause, Closing };
 ServoPhase servoPhase = ServoPhase::ClosedPause;
 uint32_t servoNextActionAt = 0;
 
-void writeServoPosition(uint8_t angle) {
-  angle = constrain(angle, 0, 180);
-  servoCurrentAngle = angle;
-  const uint32_t pulseUs = map(angle, 0, 180, SERVO_MIN_PULSE_US, SERVO_MAX_PULSE_US);
-  if (!servoPulse(pulseUs)) {
+void writeServoPosition(uint8_t physicalAngle) {
+  physicalAngle = constrain(physicalAngle, SERVO_CLOSED_ANGLE, SERVO_PHYSICAL_MAX_ANGLE);
+  servoCurrentAngle = physicalAngle;
+  const uint8_t commandAngle = physicalAngle * SERVO_COMMAND_PER_PHYSICAL_DEGREE;
+  if (!servoWriteAngle(commandAngle)) {
     servoCycleEnabled = false;
     servoDetach();
     digitalWrite(SERVO_SIGNAL_PIN, LOW);
@@ -144,16 +144,11 @@ void updateServoCycle() {
       break;
 
     case ServoPhase::Opening: {
-      const uint8_t steppedAngle = servoCurrentAngle + SERVO_STEP_DEGREES;
-      const uint8_t nextAngle = steppedAngle < servoOpenAngle ? steppedAngle : servoOpenAngle;
-      writeServoPosition(nextAngle);
-      if (nextAngle >= servoOpenAngle) {
-        servoIsOpen = true;
-        servoPhase = ServoPhase::OpenPause;
-        servoNextActionAt = now + SERVO_OPEN_HOLD_MS;
-      } else {
-        servoNextActionAt = now + SERVO_STEP_INTERVAL_MS;
-      }
+      // Do not slow the mechanism down in software: jump immediately to target.
+      writeServoPosition(servoOpenAngle);
+      servoIsOpen = true;
+      servoPhase = ServoPhase::OpenPause;
+      servoNextActionAt = now + SERVO_OPEN_HOLD_MS;
       break;
     }
 
@@ -164,16 +159,10 @@ void updateServoCycle() {
       break;
 
     case ServoPhase::Closing: {
-      const uint8_t nextAngle = servoCurrentAngle > SERVO_STEP_DEGREES
-        ? servoCurrentAngle - SERVO_STEP_DEGREES
-        : SERVO_CLOSED_ANGLE;
-      writeServoPosition(nextAngle);
-      if (nextAngle <= SERVO_CLOSED_ANGLE) {
-        servoPhase = ServoPhase::ClosedPause;
-        servoNextActionAt = now + SERVO_CLOSED_HOLD_MS;
-      } else {
-        servoNextActionAt = now + SERVO_STEP_INTERVAL_MS;
-      }
+      // Same immediate movement back to the physical closed position.
+      writeServoPosition(SERVO_CLOSED_ANGLE);
+      servoPhase = ServoPhase::ClosedPause;
+      servoNextActionAt = now + SERVO_CLOSED_HOLD_MS;
       break;
     }
   }
@@ -367,7 +356,8 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
     if (!enabled) {
       stopServoCycle();
     } else {
-      const uint8_t requestedAngle = constrain(d["angle"] | SERVO_DEFAULT_OPEN_ANGLE, 0, 180);
+      const uint8_t requestedAngle = constrain(d["angle"] | SERVO_DEFAULT_OPEN_ANGLE,
+                                                SERVO_CLOSED_ANGLE, SERVO_PHYSICAL_MAX_ANGLE);
       servoOpenAngle = requestedAngle >= 68 ? 90 : 45;
       if (mode == Mode::Program) {
         if (!servoCycleEnabled) startServoCycle();
