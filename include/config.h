@@ -25,9 +25,10 @@ constexpr uint8_t SPEED_MIN_PERCENT = 0;
 constexpr uint8_t SPEED_MAX_PERCENT = 100;
 constexpr uint8_t SPEED_DEFAULT_PERCENT = 50;
 
-// Virtual track. Four metres total means centre 0 and physical ends -2..+2 m.
-// SAFE_MARGIN_M keeps software targets away from the physical ends.
-constexpr float TRACK_LENGTH_M = 4.0f;
+// Working travel is 16 metres total: centre 0 and physical ends -8..+8 m.
+// The 20 m rope keeps approximately 2 m outside the working area on each side.
+// SAFE_MARGIN_M adds a small software reserve before the mechanical stops.
+constexpr float TRACK_LENGTH_M = 16.0f;
 constexpr float SAFE_MARGIN_M = 0.20f;
 constexpr float POSITION_TOLERANCE_M = 0.015f;
 
