@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Дві каретки — демо</title>
+<title>Керування каретками</title>
 <style>
 :root{color-scheme:dark;
 font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -23,7 +23,7 @@ min-height:100svh;
 padding:16px;
 display:grid;
 place-items:center}
-main{width:min(720px,100%);
+main{width:min(960px,100%);
 background:var(--panel);
 border:1px solid var(--line);
 border-radius:24px;
@@ -47,10 +47,25 @@ border-radius:50%;
 background:var(--accent);
 box-shadow:0 0 8px var(--accent)}
 .carriages{display:grid;
-grid-template-columns:1fr 1fr;
+grid-auto-flow:column;
+grid-auto-columns:160px;
 gap:10px;
-margin:18px 0 12px}
+margin:18px 0 12px;
+overflow-x:auto;
+overscroll-behavior-inline:contain;
+scroll-snap-type:x proximity;
+scrollbar-width:none;
+-ms-overflow-style:none;
+-webkit-overflow-scrolling:touch;
+touch-action:pan-x;
+width:100%;
+min-width:0;
+cursor:grab}
+.carriages.dragging{cursor:grabbing;scroll-snap-type:none;user-select:none}
+.carriages::-webkit-scrollbar{display:none}
 .carriage{border:1px solid var(--mid);
+width:100%;
+min-width:0;
 border-radius:17px;
 background:var(--ink);
 min-height:117px;
@@ -58,9 +73,11 @@ padding:10px;
 cursor:pointer;
 color:var(--paper);
 position:relative;
-text-align:left}
+text-align:left;
+scroll-snap-align:start}
 .carriage.active{border:2px solid var(--accent);
 background:#39433c}
+.carriage.inactive{opacity:.55;filter:saturate(.35);cursor:not-allowed}
 .carriage .state{position:absolute;
 right:10px;
 top:11px;
@@ -79,13 +96,15 @@ background:var(--mid);
 border-radius:1px;
 opacity:.3}
 .signal b:nth-child(1){height:5px}.signal b:nth-child(2){height:8px}.signal b:nth-child(3){height:11px}.signal b:nth-child(4){height:14px}
-.state.level-1 .signal b:nth-child(1),.state.level-2 .signal b:nth-child(-n+2),.state.level-3 .signal b:nth-child(-n+3),.state.level-4 .signal b{background:var(--accent);opacity:1}
+.state.level-1 .signal b:nth-child(1){background:#e15f57;opacity:1}
+.state.level-2 .signal b:nth-child(-n+2){background:#e1a14e;opacity:1}
+.state.level-3 .signal b:nth-child(-n+3),.state.level-4 .signal b{background:#fff;opacity:1}
 .state.off .signal b{background:#B75E50;opacity:.25}
 
 
-.cart{display:block;width:158px;height:76px;margin:5px auto 0}.cart .cable{stroke:#c7c8bf;stroke-width:4;stroke-linecap:round}.cart .frame{fill:#090b0a;stroke:#92998d;stroke-width:3}.cart .plate{fill:#161b18;stroke:#5e6a61;stroke-width:2}.cart .roller{fill:#080909;stroke:#a1a89e;stroke-width:4}.cart .hub{fill:#444c45;stroke:#171b18;stroke-width:3}.cart .lens{fill:#e4e5dd;stroke:#161a18;stroke-width:4}.cart .lens-core{fill:#303735}.cart .bracket{fill:#090a09;stroke:#747c73;stroke-width:2}
-.chain{width:52px;
-height:26px;
+.cart{display:block;width:min(158px,100%);height:76px;margin:5px auto 0}.cart .cable{stroke:#aeb5aa;stroke-width:3;stroke-linecap:round}.cart .carriage-stem{fill:#090b0a;stroke:#667168;stroke-width:2}.cart .carriage-bar{fill:#0b0d0c;stroke:#828d84;stroke-width:2.4}.cart .carriage-panel{fill:#252b27;stroke:#7e897f;stroke-width:1.6}.cart .wheel-shell{fill:#c7ccc2;stroke:#252d28;stroke-width:3}.cart .wheel-face{fill:#414a43}.cart .wheel-hub{fill:#dce0d6}.cart .led-halo{fill:#f04a3b;opacity:0}.cart .led-core{fill:#6d2824}.carriage.moving .cart .led-core{animation:cartLed .65s steps(1,end) infinite}.carriage.moving .cart .led-halo{animation:cartHalo .65s steps(1,end) infinite}@keyframes cartLed{0%,49%{fill:#ff4d3d}50%,100%{fill:#6d2824}}@keyframes cartHalo{0%,49%{opacity:.5}50%,100%{opacity:0}}@media(prefers-reduced-motion:reduce){.carriage.moving .cart .led-core,.carriage.moving .cart .led-halo{animation:none}.carriage.moving .cart .led-core{fill:#ff4d3d}.carriage.moving .cart .led-halo{opacity:.25}}
+.chain{width:62.4px;
+height:27.3px;
 display:grid;
 place-items:center;
 padding:0;
@@ -95,8 +114,8 @@ color:#fff;
 border-radius:999px;
 cursor:pointer}
 .chain svg{display:block;
-width:45px;
-height:16px;
+width:54px;
+height:16.8px;
 fill:currentColor}
 .chain .linkedIcon{display:none}
 .chain.active .linkedIcon{display:inline}
@@ -105,34 +124,51 @@ fill:currentColor}
 border-color:var(--ink);
 background:var(--ink);
 box-shadow:0 0 11px #9FA38B44}
+.chain.offline{position:relative;
+border-color:#B75E50;
+background:#383c38;
+box-shadow:none}
+.chain.offline .linkedIcon{display:none}
+.chain.offline .brokenIcon{display:inline}
+.chain.offline::before,.chain.offline::after{content:"";
+position:absolute;
+left:50%;
+top:50%;
+width:21px;
+height:2px;
+border-radius:2px;
+background:#e15f57;
+transform:translate(-50%,-50%) rotate(45deg)}
+.chain.offline::after{transform:translate(-50%,-50%) rotate(-45deg)}
 .readout{text-align:center;
 margin:8px 0}
-.readout strong{font-size:2.55rem;
-letter-spacing:-.06em}
+.readout strong{font-size:1rem;
+letter-spacing:normal}
 .readout span{font-size:.8rem;
 color:var(--muted)}
 .railWrap{position:relative;
-padding:34px 3px 30px}
+padding:44px 0 38px}
 .rail{height:14px;
 border-radius:20px;
 background:#5E6A61;
 box-shadow:inset 0 2px 5px #0009}
 .centre{position:absolute;
 left:50%;
-top:28px;
+top:38px;
 width:2px;
 height:28px;
-background:var(--paper)}
+background:var(--paper);
+transform:translateX(-50%)}
 .ipsc{position:absolute;
-top:0;
-width:44px;
-height:58px;
-transform:translateX(-50%);
+top:51px;
+width:82.368px;
+height:108.576px;
+transform:translate(-50%,-50%);
 filter:drop-shadow(0 2px 4px #000);
 pointer-events:none}
-.ipsc .target-outline{fill:var(--paper);stroke:var(--ink);stroke-width:5}.ipsc .target-zone{fill:none;stroke:var(--mid);stroke-width:4}.ipsc text{fill:var(--mid);font:700 21px system-ui;text-anchor:middle}
+.ipsc .target-outline{fill:#FF4D00;stroke:#000;stroke-width:5}.ipsc .target-rim{fill:none;stroke:#000;stroke-width:3}.ipsc .target-zone{fill:none;stroke:#000;stroke-width:4}.ipsc text{fill:#000;font:700 28px system-ui;text-anchor:middle}
 .targetDot{position:absolute;
-top:30px;
+top:46px;
 width:10px;
 height:10px;
 margin-left:-5px;
@@ -146,18 +182,37 @@ z-index:1}
 input[type=range].target{z-index:3}
 input[type=range].target{position:absolute;
 left:0;
-top:4px;
+top:16px;
 width:100%;
-height:55px;
+height:70px;
 margin:0;
 opacity:.01;
 cursor:pointer;
 touch-action:pan-x}
-.ticks{display:flex;
-justify-content:space-between;
-margin-top:10px;
+.ticks{position:relative;
+height:45px;
+margin-top:5px;
 color:var(--muted);
-font-size:.74rem}
+font-size:.7rem}
+.tick{position:absolute;
+top:0;
+width:1px;
+height:8px;
+transform:translateX(-50%);
+background:var(--mid);
+font-style:normal}
+.tick.major{width:2px;
+height:15px;
+background:var(--accent)}
+.tick span{position:absolute;
+top:31px;
+left:50%;
+transform:translateX(-50%);
+white-space:nowrap}
+.tick:first-child span{left:0;
+transform:none}
+.tick:last-child span{left:0;
+transform:translateX(-100%)}
 .speed{display:grid;
 grid-template-columns:auto 1fr 48px;
 align-items:center;
@@ -177,11 +232,9 @@ color:var(--paper);
 font-weight:900;
 font-size:1rem;
 cursor:pointer}
-.programs{display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:8px;
-margin-top:13px}
-.programs button,.manual button{background:var(--ink);
+.automation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
+.programs{display:grid;grid-template-columns:1fr;gap:8px}
+.programs button,.manual button,.servoButtons button{background:var(--ink);
 border:1px solid var(--mid);
 color:var(--paper);
 border-radius:12px;
@@ -190,20 +243,26 @@ font-weight:750;
 cursor:pointer}
 .programs button.active{background:var(--mid);
 border-color:var(--accent)}
+.programs small{display:block;color:var(--accent);font-weight:500;margin-top:3px}
+.sectionTitle{font-size:.8rem;color:var(--muted);margin:15px 0 7px;font-weight:700}
+.servoPanel{border:1px solid var(--line);border-radius:14px;padding:9px;min-height:100%;display:flex;flex-direction:column}
+.servoTitle{text-align:center;color:var(--muted);font-size:.76rem;font-weight:750;margin:1px 0 9px}
+.servoButtons{display:flex;flex:1;flex-direction:column;gap:8px}
+.servoButtons button{width:100%;flex:1;display:flex;align-items:center;justify-content:center}
+.servoButtons button.active{background:var(--mid);border-color:var(--paper)}
+.servoButtons button.selected{border-color:var(--paper)}
+.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 details{margin-top:14px;
 border-top:1px solid var(--line);
 padding-top:11px}
 summary{cursor:pointer;
 color:var(--muted)}
 .manual{display:grid;
-grid-template-columns:1fr 1fr 1fr;
+grid-template-columns:1fr 1.5fr 1fr;
 gap:8px;
 margin-top:10px}
-.manual .zero{grid-column:1/-1}
-.hint{font-size:.72rem;
-text-align:center;
-color:var(--muted);
-margin:12px 0 0}
+.manual .zero{font-size:.72rem;line-height:1.2;padding:5px}
+button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 @media(max-width:520px){body{padding:0;
 display:block}
 main{min-height:100svh;
@@ -214,9 +273,7 @@ box-shadow:none}
 .carriages{margin-top:15px}
 .cart{transform:scale(.88);
 margin:-1px auto -3px}
-.programs{grid-template-columns:1fr 1fr}
-.programs button{min-height:55px}
-.readout strong{font-size:2.3rem}
+.programs button,.servoButtons button{min-height:50px}
 .manual button{min-height:55px}
 }
 
@@ -225,26 +282,26 @@ margin:-1px auto -3px}
 <body>
 <main>
 <header>
-<h1>Дві каретки</h1>
-<button id="link" class="chain" aria-pressed="false" title="Окремі команди для кожної каретки"><svg viewBox="0 0 100 34" aria-hidden="true"><path class="linkedIcon" fill-rule="evenodd" d="M0.4,12.5L0.8,18.6L2.8,22.9L6.6,26.5L12.2,28.7L31.9,28.5L35.9,27.6L36.6,26.8L37.2,27.0L36.7,27.6L40.5,28.9L60.3,28.7L63.7,28.0L64.9,27.1L65.6,27.2L64.9,27.7L67.7,28.7L87.5,28.5L91.5,27.6L95.6,24.9L98.5,21.5L99.6,19.2L99.7,10.8L97.7,5.8L93.5,2.0L89.1,0.3L69.4,0.3L64.6,1.5L61.9,0.5L50.1,0.3L40.1,0.6L37.3,1.8L33.5,0.3L21.8,0.0L11.8,0.5L7.7,1.8L4.2,4.4L2.2,7.3ZM37.1,9.0L38.4,11.4L38.7,15.3L37.5,19.2L36.3,20.1L34.8,17.1L34.8,11.6L35.7,10.0ZM64.4,8.6L66.2,10.5L67.1,14.1L66.2,18.6L64.8,20.5L62.9,19.1L62.0,16.8L62.0,11.4ZM58.2,6.3L55.9,12.5L56.2,18.0L58.2,22.4L41.9,23.2L44.1,19.2L44.2,16.5L44.1,9.9L42.4,6.7ZM70.5,6.5L87.3,6.1L90.0,6.8L92.8,9.1L93.9,11.4L94.3,15.3L92.8,19.7L90.9,21.3L87.7,22.3L71.1,22.5L70.3,23.4L72.3,19.5L72.5,11.0ZM31.4,6.2L28.7,12.8L29.0,18.2L30.4,22.3L13.5,22.5L10.9,22.2L7.3,19.1L6.5,16.8L6.5,11.4L7.0,10.3L11.3,6.6Z"/><path class="brokenIcon" d="M44.0,10.7L44.0,16.7L55.8,16.7L55.6,10.4ZM58.1,9.8L58.1,17.6L59.8,21.2L62.8,24.5L66.2,26.4L82.4,31.8L86.8,32.1L91.8,30.9L94.5,29.2L96.6,27.0L99.0,22.5L99.0,14.5L97.3,10.9L94.3,7.6L91.3,5.9L75.3,0.6L68.7,0.2L65.3,1.3L70.2,3.0L73.7,6.5L88.5,11.2L91.6,13.2L93.3,16.2L93.6,20.0L91.9,23.4L89.0,25.7L84.1,26.1L67.9,20.7L65.7,19.2L63.9,16.6L63.8,11.5ZM54.9,0.2L53.0,5.8L66.5,10.3L67.0,12.2L65.6,13.7L65.9,15.6L67.9,18.3L69.1,18.4L70.2,17.8L71.9,15.9L73.0,13.3L73.0,10.3L71.0,6.4L67.5,4.2ZM45.0,0.2L32.2,4.2L29.0,6.2L27.0,9.5L26.9,13.3L29.2,17.5L31.4,18.4L33.2,17.0L34.2,13.8L32.7,12.2L33.5,10.2L46.8,5.8ZM41.7,9.8L36.1,11.5L35.9,16.6L34.2,19.2L31.9,20.7L15.6,26.1L10.8,25.7L7.5,22.9L6.2,20.0L6.2,17.1L8.1,13.2L11.3,11.2L26.1,6.5L29.2,3.3L34.4,1.3L31.0,0.2L24.5,0.6L8.5,5.9L5.5,7.6L2.7,10.7L1.0,13.9L0.4,16.5L0.4,20.6L1.0,23.2L2.7,26.4L5.3,29.2L10.4,31.8L17.3,31.8L35.8,25.3L39.4,22.1L41.3,18.7L42.2,15.6Z"/></svg></button>
+<h1>Каретки</h1>
+<button id="link" class="chain" aria-pressed="false" title="Окремі команди для кожної каретки"><svg viewBox="0 0 100 34" aria-hidden="true"><g class="linkedIcon" fill="none" stroke="currentColor" stroke-width="6"><path d="M16 4H28a13 13 0 0 1 0 26H16a13 13 0 0 1 0-26Z"/><path d="M44 4H56a13 13 0 0 1 0 26H44a13 13 0 0 1 0-26Z"/><path d="M72 4H84a13 13 0 0 1 0 26H72a13 13 0 0 1 0-26Z"/></g><path class="brokenIcon" d="M44.0,10.7L44.0,16.7L55.8,16.7L55.6,10.4ZM58.1,9.8L58.1,17.6L59.8,21.2L62.8,24.5L66.2,26.4L82.4,31.8L86.8,32.1L91.8,30.9L94.5,29.2L96.6,27.0L99.0,22.5L99.0,14.5L97.3,10.9L94.3,7.6L91.3,5.9L75.3,0.6L68.7,0.2L65.3,1.3L70.2,3.0L73.7,6.5L88.5,11.2L91.6,13.2L93.3,16.2L93.6,20.0L91.9,23.4L89.0,25.7L84.1,26.1L67.9,20.7L65.7,19.2L63.9,16.6L63.8,11.5ZM54.9,0.2L53.0,5.8L66.5,10.3L67.0,12.2L65.6,13.7L65.9,15.6L67.9,18.3L69.1,18.4L70.2,17.8L71.9,15.9L73.0,13.3L73.0,10.3L71.0,6.4L67.5,4.2ZM45.0,0.2L32.2,4.2L29.0,6.2L27.0,9.5L26.9,13.3L29.2,17.5L31.4,18.4L33.2,17.0L34.2,13.8L32.7,12.2L33.5,10.2L46.8,5.8ZM41.7,9.8L36.1,11.5L35.9,16.6L34.2,19.2L31.9,20.7L15.6,26.1L10.8,25.7L7.5,22.9L6.2,20.0L6.2,17.1L8.1,13.2L11.3,11.2L26.1,6.5L29.2,3.3L34.4,1.3L31.0,0.2L24.5,0.6L8.5,5.9L5.5,7.6L2.7,10.7L1.0,13.9L0.4,16.5L0.4,20.6L1.0,23.2L2.7,26.4L5.3,29.2L10.4,31.8L17.3,31.8L35.8,25.3L39.4,22.1L41.3,18.7L42.2,15.6Z"/></svg></button>
 <div class="status">
 <i class="dot">
 </i>
-<span>демо без ESP</span>
+<span id="status">Сайт онлайн</span>
 </div>
 </header>
-<section class="carriages">
+<section class="carriages" aria-label="Каретки. Прокручуйте горизонтально" tabindex="0">
 <button class="carriage active" data-carriage="1">
-<span class="state online level-4"><i class="signal"><b></b><b></b><b></b><b></b></i><span class="stateLabel">онлайн</span></span>
-<svg class="cart" viewBox="0 0 210 100" aria-label="підвісна каретка на тросі"><path class="cable" d="M4 43H206"/><path class="bracket" d="M48 42h18l12 23h54l12-23h18l-14 43H62z"/><path class="frame" d="M61 58h88l13 24-11 9H59l-11-9z"/><path class="plate" d="M75 67h60l8 11H67z"/><circle class="roller" cx="55" cy="27" r="18"/><circle class="hub" cx="55" cy="27" r="7"/><circle class="roller" cx="155" cy="27" r="18"/><circle class="hub" cx="155" cy="27" r="7"/><circle class="lens" cx="83" cy="75" r="9"/><circle class="lens-core" cx="83" cy="75" r="4"/><circle class="lens" cx="127" cy="75" r="9"/><circle class="lens-core" cx="127" cy="75" r="4"/></svg>
+<span class="state online level-2"><i class="signal"><b></b><b></b><b></b><b></b></i><span class="stateLabel">онлайн</span></span>
+<svg class="cart" viewBox="0 0 210 100" aria-label="каретка з тросом знизу"><path class="cable" d="M4 78H206"/><path class="carriage-stem" d="M79 46H131L124 77Q123 86 113 86H97Q87 86 86 77Z"/><path class="carriage-bar" d="M30 23H180Q190 23 190 33V47Q190 55 180 55H30Q20 55 20 47V33Q20 23 30 23Z"/><path class="carriage-panel" d="M54 31H156L151 47H59Z"/><circle class="wheel-shell" cx="30" cy="39" r="14"/><circle class="wheel-face" cx="30" cy="39" r="7"/><circle class="wheel-hub" cx="30" cy="39" r="2"/><circle class="wheel-shell" cx="180" cy="39" r="14"/><circle class="wheel-face" cx="180" cy="39" r="7"/><circle class="wheel-hub" cx="180" cy="39" r="2"/><circle class="led-halo" cx="105" cy="39" r="12"/><circle class="led-core" cx="105" cy="39" r="5"/></svg>
 </button>
 <button class="carriage" data-carriage="2">
-<span class="state online level-4"><i class="signal"><b></b><b></b><b></b><b></b></i><span class="stateLabel">онлайн</span></span>
-<svg class="cart" viewBox="0 0 210 100" aria-label="підвісна каретка на тросі"><path class="cable" d="M4 43H206"/><path class="bracket" d="M48 42h18l12 23h54l12-23h18l-14 43H62z"/><path class="frame" d="M61 58h88l13 24-11 9H59l-11-9z"/><path class="plate" d="M75 67h60l8 11H67z"/><circle class="roller" cx="55" cy="27" r="18"/><circle class="hub" cx="55" cy="27" r="7"/><circle class="roller" cx="155" cy="27" r="18"/><circle class="hub" cx="155" cy="27" r="7"/><circle class="lens" cx="83" cy="75" r="9"/><circle class="lens-core" cx="83" cy="75" r="4"/><circle class="lens" cx="127" cy="75" r="9"/><circle class="lens-core" cx="127" cy="75" r="4"/></svg>
+<span id="state2" class="state online level-4"><i class="signal"><b></b><b></b><b></b><b></b></i><span class="stateLabel">онлайн</span></span>
+<svg class="cart" viewBox="0 0 210 100" aria-label="каретка з тросом знизу"><path class="cable" d="M4 78H206"/><path class="carriage-stem" d="M79 46H131L124 77Q123 86 113 86H97Q87 86 86 77Z"/><path class="carriage-bar" d="M30 23H180Q190 23 190 33V47Q190 55 180 55H30Q20 55 20 47V33Q20 23 30 23Z"/><path class="carriage-panel" d="M54 31H156L151 47H59Z"/><circle class="wheel-shell" cx="30" cy="39" r="14"/><circle class="wheel-face" cx="30" cy="39" r="7"/><circle class="wheel-hub" cx="30" cy="39" r="2"/><circle class="wheel-shell" cx="180" cy="39" r="14"/><circle class="wheel-face" cx="180" cy="39" r="7"/><circle class="wheel-hub" cx="180" cy="39" r="2"/><circle class="led-halo" cx="105" cy="39" r="12"/><circle class="led-core" cx="105" cy="39" r="5"/></svg>
 </button>
 </section>
 <div class="readout">
-<strong id="pos">0.00</strong> <span>м від центру · <b id="which">каретка 1</b>
+<strong id="pos">0.00</strong><strong> м</strong> <span>від центру · <b id="which">каретка 1</b>
 </span>
 </div>
 <div class="railWrap">
@@ -252,17 +309,33 @@ margin:-1px auto -3px}
 </div>
 <div class="centre">
 </div>
-<svg id="ipsc" class="ipsc" viewBox="0 0 400 400" style="left:50%" aria-label="IPSC мішень">
-<path class="target-outline" d="M148 28H252L336 140V254L252 370H148L64 254V140z"/>
-<path class="target-zone" d="M125 60H275L290 142V225L235 300H165L110 225V142z"/><path class="target-zone" d="M170 82H230L246 150V197L215 238H185L154 197V150z"/>
-<text x="200" y="173">A</text><text x="124" y="180">C</text><text x="276" y="180">C</text><text x="72" y="180">D</text><text x="328" y="180">D</text>
+<svg id="ipsc" class="ipsc" viewBox="0 0 400 520" style="left:50%" aria-label="IPSC мішень">
+<path class="target-outline" d="M154 90H246L335 204V292L246 430H154L65 292V204Z"/>
+<path class="target-rim" d="M156 94H244L331 206V290L244 426H156L69 290V206Z"/>
+<path class="target-zone" d="M154 94H246L292 204V289L226 361H174L108 289V204Z"/>
+<path class="target-zone" d="M186 106H214L244 204V257L214 304H186L156 257V204Z"/>
+<text x="200" y="218">A</text><text x="138" y="218">C</text><text x="262" y="218">C</text><text x="92" y="218">D</text><text x="308" y="218">D</text>
 </svg>
 <i id="targetDot" class="targetDot" style="left:50%" aria-label="вибрана точка"></i>
-<input id="target" class="target" type="range" min="-7.8" max="7.8" step="0.05" value="0">
+<input id="target" class="target" type="range" min="-8" max="8" step="0.05" value="0">
 <div class="ticks">
-<span>−7.8 м</span>
-<span>центр</span>
-<span>+7.8 м</span>
+<i class="tick major" style="left:0%"><span>−8 м</span></i>
+<i class="tick" style="left:6.25%"></i>
+<i class="tick major" style="left:12.5%"><span>−6</span></i>
+<i class="tick" style="left:18.75%"></i>
+<i class="tick major" style="left:25%"><span>−4</span></i>
+<i class="tick" style="left:31.25%"></i>
+<i class="tick major" style="left:37.5%"><span>−2</span></i>
+<i class="tick" style="left:43.75%"></i>
+<i class="tick major" style="left:50%"><span>центр</span></i>
+<i class="tick" style="left:56.25%"></i>
+<i class="tick major" style="left:62.5%"><span>+2</span></i>
+<i class="tick" style="left:68.75%"></i>
+<i class="tick major" style="left:75%"><span>+4</span></i>
+<i class="tick" style="left:81.25%"></i>
+<i class="tick major" style="left:87.5%"><span>+6</span></i>
+<i class="tick" style="left:93.75%"></i>
+<i class="tick major" style="left:100%"><span>+8 м</span></i>
 </div>
 </div>
 <div class="speed">
@@ -270,93 +343,66 @@ margin:-1px auto -3px}
 <input id="speed" type="range" min="1" max="100" value="50">
 <output id="speedOut">50%</output>
 </div>
-<button id="stop" class="stop">СТОП</button>
-<div class="programs">
-<button data-program="1">Маятник</button>
-<button data-program="2">Драбинка</button>
-<button data-program="3">Ривки</button>
-<button data-program="4">Рандом</button>
-</div>
+<button id="stop" class="stop">СТАРТ</button>
+<p class="sectionTitle">Режими роботи</p>
+<div class="automation"><div class="programs">
+<button data-program="1" class="active">Маятник<small>від краю до краю</small></button>
+<button data-program="2">Драбинка<small>амплітуда зростає</small></button>
+<button data-program="3">Ривки<small>нерівний маршрут</small></button>
+<button data-program="4">Рандом<small>випадкові точки</small></button>
+</div><section class="servoPanel"><div class="servoTitle">Керування сервоприводом</div><div class="servoButtons"><button data-servo="45" class="selected">45°</button><button data-servo="90">90°</button><button id="servoOff" class="servoOff active">Вимк.</button></div><div id="servoState" class="srOnly" aria-live="polite">вимкнено · 0°</div></section></div>
 <details>
 <summary>Ручне калібрування</summary>
 <div class="manual">
 <button id="left">Вліво</button>
-<button id="right">Вправо</button>
 <button id="zero" class="zero">Позначити поточне місце як центр</button>
+<button id="right">Вправо</button>
 </div>
 </details>
-<p class="hint">Демо: рух відображається віртуально, обладнання не керується.</p>
 </main>
 <script>
-const $=x=>document.getElementById(x),all=q=>[...document.querySelectorAll(q)];
+const $=id=>document.getElementById(id),all=q=>[...document.querySelectorAll(q)];
 let selected=0,linked=false,drag=false,last=performance.now(),jog=0;
-const c=[{p:0,t:0,s:50,prog:0}
-,{p:0,t:0,s:50,prog:0}
-];
-const pct=v=>((v+7.8)/15.6*100)+'%';
-function affected(f){f(selected);
-if(linked)f(selected?0:1)}
-function redraw(){let x=c[selected];
-$('pos').textContent=x.p.toFixed(2);
-$('which').textContent='каретка '+(selected+1);
-$('ipsc').style.left=pct(x.p);
-$('targetDot').style.left=pct(x.t);
-if(!drag)$('target').value=x.t;
-$('speed').value=x.s;
-$('speedOut').textContent=x.s+'%';
-all('.carriage').forEach(b=>b.classList.toggle('active',+b.dataset.carriage===selected+1));
-all('[data-program]').forEach(b=>b.classList.toggle('active',+b.dataset.program===x.prog))}
-function programTarget(x){let a=[-.5,.9,-1.3,.3,1.6];
-x.t=x.prog===1?(x.t>0?-7.8:7.8):x.prog===2?[-1.8,3.4,-5.2,7.0][Math.floor(Math.random()*4)]:x.prog===3?a[Math.floor(Math.random()*a.length)]:Math.random()*15.6-7.8}
-function tick(n){let dt=Math.min(.05,(n-last)/1000);
-last=n;
-c.forEach(x=>{if(x.prog&&Math.abs(x.t-x.p)<.03)programTarget(x);
-let d=x.t-x.p;
-if(Math.abs(d)>.01)x.p+=Math.sign(d)*Math.min(Math.abs(d),.8*x.s/100*dt)}
-);
-redraw();
-requestAnimationFrame(tick)}
-all('.carriage').forEach(b=>b.onclick=()=>{selected=+b.dataset.carriage-1;
-redraw()}
-);
-$('link').onclick=()=>{linked=!linked;
-$('link').classList.toggle('active',linked);
-$('link').setAttribute('aria-pressed',linked);
-$('link').title=linked?'Синхронні команди для обох кареток':'Окремі команди для кожної каретки'}
-;
-$('speed').oninput=()=>{affected(i=>c[i].s=+$('speed').value);
-redraw()}
-;
-$('target').onpointerdown=()=>drag=true;
-$('target').oninput=()=>{affected(i=>{c[i].t=+$('target').value;
-c[i].prog=0}
-);
-redraw()}
-;
-$('target').onchange=()=>drag=false;
-$('stop').onclick=()=>affected(i=>{c[i].t=c[i].p;
-c[i].prog=0}
-);
-all('[data-program]').forEach(b=>b.onclick=()=>affected(i=>{c[i].prog=+b.dataset.program;
-programTarget(c[i])}
-));
-function hold(dir){clearInterval(jog);
-affected(i=>{c[i].prog=0;
-c[i].t=dir*7.8}
-);
-jog=setInterval(()=>affected(i=>c[i].t=dir*7.8),120)}
-function release(){clearInterval(jog);
-affected(i=>c[i].t=c[i].p)}
-$('left').onpointerdown=()=>hold(-1);
-$('right').onpointerdown=()=>hold(1);
-for(let id of ['left','right']){$(id).onpointerup=release;
-$(id).onpointercancel=release}
-$('zero').onclick=()=>affected(i=>{c[i].p=c[i].t=0;
-c[i].prog=0}
-);
-redraw();
-requestAnimationFrame(tick);
-
+const carriageScroller=document.querySelector(".carriages");
+function fitCarriages(){const width=carriageScroller.clientWidth;if(!width)return;const gap=10,minCard=150,capacity=Math.max(2,Math.floor((width+gap)/(minCard+gap))),visible=Math.min(carriageScroller.children.length,capacity),cardWidth=Math.floor((width-gap*(visible-1))/visible);carriageScroller.style.gridAutoColumns=`${cardWidth}px`}
+if("ResizeObserver" in window)new ResizeObserver(fitCarriages).observe(carriageScroller);else window.addEventListener("resize",fitCarriages,{passive:true});
+new MutationObserver(fitCarriages).observe(carriageScroller,{childList:true});
+fitCarriages();
+const demoNodeOnline=!(typeof location!=="undefined"&&/node=offline/.test(location.search));
+const c=Array.from({length:2},(_,i)=>({p:0,t:0,s:50,prog:1,mode:"stop",angle:45,servo:0,visualServo:0,servoEnabled:false,nextServo:0,step:0,level:i===0?2:4}));
+if(!demoNodeOnline){$("link").classList.add("offline");$("link").title="Немає сигналу другої каретки";$("link").setAttribute("aria-label",$("link").title);$("status").textContent="Сайт онлайн";$("state2").className="state off level-0";$("state2").querySelector(".stateLabel").textContent="офлайн"}
+const pct=v=>((v+8)/16*100)+"%";
+function affected(fn){fn(c[selected]);if(linked)fn(c[selected?0:1])}
+function close(x){x.servo=0;x.nextServo=0;x.servoEnabled=false}
+function stop(x,keepServo=false){x.t=x.p;x.mode="stop";if(!keepServo)close(x)}
+function nextTarget(x){let n=x.step++;x.t=x.prog===1?(n%2?-8:8):x.prog===2?(n%2?-1:1)*[1.6,3.2,4.8,6.4,8][Math.floor(n/2)%5]:x.prog===3?[-2,4,-6,.8,8][n%5]:Math.random()*16-8}
+function start(x){x.mode="program";x.step=0;if(!x.servoEnabled){x.servo=0;x.servoEnabled=true;x.nextServo=performance.now()+2000}nextTarget(x)}
+function redraw(){let x=c[selected];$("pos").textContent=x.p.toFixed(2);$("which").textContent="каретка "+(selected+1);$("ipsc").style.left=pct(x.p);$("targetDot").style.left=pct(x.t);if(!drag)$("target").value=x.t;$("speed").value=x.s;$("speedOut").textContent=x.s+"%";$("stop").textContent=x.mode==="stop"?"СТАРТ":"СТОП";let phase=x.visualServo<x.servo-1?"відкривається":x.visualServo>x.servo+1?"закривається":x.servo?"відкрито":"закрито";$("servoState").textContent=x.servoEnabled?phase+" · "+Math.round(x.visualServo)+"°":"вимкнено · 0°";all(".carriage").forEach(b=>{const carriage=c[+b.dataset.carriage-1];b.classList.toggle("active",+b.dataset.carriage===selected+1);b.classList.toggle("moving",(+b.dataset.carriage!==2||demoNodeOnline)&&carriage.mode!=="stop"&&Math.abs(carriage.t-carriage.p)>.015)});all("[data-program]").forEach(b=>b.classList.toggle("active",+b.dataset.program===x.prog));all("[data-servo]").forEach(b=>{b.classList.toggle("selected",+b.dataset.servo===x.angle);b.classList.toggle("active",+b.dataset.servo===x.angle&&x.servoEnabled)});$("servoOff").classList.toggle("active",!x.servoEnabled)}
+function tick(n){let dt=Math.min(.05,(n-last)/1000);last=n;if(!demoNodeOnline){stop(c[1]);if(linked)stop(c[0])}c.forEach(x=>{if(x.servoEnabled&&x.nextServo&&n>=x.nextServo){x.servo=x.servo?0:x.angle;x.nextServo=n+(x.servo?1000:2000)}if(x.mode==="program"&&Math.abs(x.t-x.p)<.03)nextTarget(x);let sd=x.servo-x.visualServo,servoStep=90*dt/.35;x.visualServo+=Math.sign(sd)*Math.min(Math.abs(sd),servoStep);if(x.mode!=="stop"){let d=x.t-x.p;if(Math.abs(d)>.01)x.p+=Math.sign(d)*Math.min(Math.abs(d),.8*x.s/100*dt);else if(x.mode==="target")x.mode="stop"}});redraw();requestAnimationFrame(tick)}
+all(".carriage").forEach(b=>b.onclick=()=>{selected=+b.dataset.carriage-1;redraw()});
+let mouseDownX=0,mouseScrollLeft=0,mouseDragging=false,suppressCarriageClick=false;
+carriageScroller.addEventListener("pointerdown",e=>{if(e.pointerType!=="mouse"||e.button!==0)return;mouseDragging=true;suppressCarriageClick=false;mouseDownX=e.clientX;mouseScrollLeft=carriageScroller.scrollLeft});
+carriageScroller.addEventListener("pointermove",e=>{if(!mouseDragging)return;const delta=e.clientX-mouseDownX;if(Math.abs(delta)>4){suppressCarriageClick=true;carriageScroller.classList.add("dragging");carriageScroller.scrollLeft=mouseScrollLeft-delta}});
+const endMouseDrag=()=>{mouseDragging=false;carriageScroller.classList.remove("dragging")};
+carriageScroller.addEventListener("pointerup",endMouseDrag);carriageScroller.addEventListener("pointercancel",endMouseDrag);
+carriageScroller.addEventListener("click",e=>{if(suppressCarriageClick){e.preventDefault();e.stopImmediatePropagation();suppressCarriageClick=false}},true);
+carriageScroller.addEventListener("keydown",e=>{if(e.key==="ArrowRight"||e.key==="ArrowLeft"){carriageScroller.scrollBy({left:(e.key==="ArrowRight"?1:-1)*carriageScroller.clientWidth*.75,behavior:"smooth"});e.preventDefault()}});
+carriageScroller.addEventListener("wheel",e=>{if(carriageScroller.scrollWidth<=carriageScroller.clientWidth)return;const delta=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;carriageScroller.scrollLeft+=delta;e.preventDefault()},{passive:false});
+$("link").onclick=()=>{linked=!linked;$("link").classList.toggle("active",linked);$("link").setAttribute("aria-pressed",linked);$("link").title=linked?"Синхронні команди для обох кареток":"Окремі команди для кожної каретки"};
+$("speed").oninput=()=>{affected(x=>x.s=+$("speed").value);redraw()};
+$("target").onpointerdown=()=>drag=true;
+$("target").oninput=()=>{affected(x=>{x.t=+$("target").value;x.mode="target";close(x)});redraw()};
+$("target").onchange=()=>drag=false;
+$("stop").onclick=()=>{const running=c[selected].mode!=="stop",program=c[selected].prog,speed=c[selected].s;affected(x=>{if(running)stop(x,true);else{x.prog=program;x.s=speed;start(x)}});redraw()};
+all("[data-program]").forEach(b=>b.onclick=()=>{affected(x=>{x.prog=+b.dataset.program;start(x)});redraw()});
+all("[data-servo]").forEach(b=>b.onclick=()=>{affected(x=>{x.angle=+b.dataset.servo;if(!x.servoEnabled){x.servoEnabled=true;x.servo=0;x.nextServo=performance.now()+2000}else if(x.servo)x.servo=x.angle});redraw()});
+$("servoOff").onclick=()=>{affected(close);redraw()};
+function hold(dir){clearInterval(jog);affected(x=>{x.mode="jog";x.t=dir*8;close(x)});jog=setInterval(()=>affected(x=>x.t=dir*8),120)}
+function release(){clearInterval(jog);affected(stop);redraw()}
+$("left").onpointerdown=()=>hold(-1);$("right").onpointerdown=()=>hold(1);
+for(const id of ["left","right"]){$(id).onpointerup=release;$(id).onpointercancel=release}
+$("zero").onclick=()=>{affected(x=>{stop(x);x.p=x.t=0});redraw()};
+redraw();requestAnimationFrame(tick);
 </script>
 </body>
 </html>
