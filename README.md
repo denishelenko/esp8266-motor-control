@@ -1,6 +1,6 @@
 # Бігунок — ESP8266, L298N та сервопривід
 
-**Нові окремі автономні варіанти мотор + серво + двоколірний RGB LED для NodeMCU, Wemos Pro та ESP32-S3: [інструкція 09/10/11](README_STANDALONE_LED.md).**
+**Нові окремі автономні варіанти мотор + серво + червоний LED для NodeMCU, Wemos Pro та ESP32-S3: [інструкція 09/10/11](README_STANDALONE_LED.md).**
 
 Окремі Arduino-скетчі для NodeMCU v3 та Wemos D1 mini Pro, двоплатного ESP-NOW, калібрування і тестів. **Основна інструкція для пайки та прошивання: [ArduinoIDE/README.md](ArduinoIDE/README.md).**
 

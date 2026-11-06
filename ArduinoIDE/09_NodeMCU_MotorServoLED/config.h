@@ -18,37 +18,34 @@ constexpr char CONTROLLER_IP[] = "192.168.4.1";
 #error Select ESP32S3 Dev Module, not ESP32/ESP8266
 #endif
 constexpr char PINOUT_NAME[] = "ESP32-S3 N16R8";
-constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] GPIO5=ENA GPIO6=IN1 GPIO7=IN2 GPIO15=SERVO GPIO4=RED GPIO16=GREEN";
+constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] GPIO5=ENA GPIO6=IN1 GPIO7=IN2 GPIO15=SERVO GPIO4=RED";
 constexpr uint8_t MOTOR_ENA_PIN = 5;
 constexpr uint8_t MOTOR_IN1_PIN = 6;
 constexpr uint8_t MOTOR_IN2_PIN = 7;
 constexpr uint8_t SERVO_SIGNAL_PIN = 15;
 constexpr uint8_t LIGHT_RED_PIN = 4;
-constexpr uint8_t LIGHT_GREEN_PIN = 16;
 #elif defined(PINOUT_WEMOS_D1_MINI_PRO)
 #if !defined(ESP8266)
 #error Select Wemos D1 mini Pro (ESP8266)
 #endif
 constexpr char PINOUT_NAME[] = "Wemos D1 Mini Pro";
-constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D6=IN2 D5=SERVO D7=RED D0=GREEN";
+constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D6=IN2 D5=SERVO D7=RED";
 constexpr uint8_t MOTOR_ENA_PIN = 5;
 constexpr uint8_t MOTOR_IN1_PIN = 4;
 constexpr uint8_t MOTOR_IN2_PIN = 12;
 constexpr uint8_t SERVO_SIGNAL_PIN = 14;
 constexpr uint8_t LIGHT_RED_PIN = 13;
-constexpr uint8_t LIGHT_GREEN_PIN = 16;
 #else
 #if !defined(ESP8266)
 #error Select NodeMCU 1.0 (ESP-12E Module)
 #endif
 constexpr char PINOUT_NAME[] = "NodeMCU v3";
-constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D5=IN2 D6=SERVO D7=RED D0=GREEN";
+constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D5=IN2 D6=SERVO D7=RED";
 constexpr uint8_t MOTOR_ENA_PIN = 5;
 constexpr uint8_t MOTOR_IN1_PIN = 4;
 constexpr uint8_t MOTOR_IN2_PIN = 14;
 constexpr uint8_t SERVO_SIGNAL_PIN = 12;
 constexpr uint8_t LIGHT_RED_PIN = 13;
-constexpr uint8_t LIGHT_GREEN_PIN = 16;
 #endif
 
 // SERVOMY SDS2601-26G: power red from a stable 5-8.4 V source and connect
@@ -141,10 +138,7 @@ static_assert(SPEED_MIN_PERCENT >= 1 && SPEED_MAX_PERCENT <= 100 &&
               SPEED_DEFAULT_PERCENT >= SPEED_MIN_PERCENT &&
               SPEED_DEFAULT_PERCENT <= SPEED_MAX_PERCENT, "Invalid speed range");
 
-static_assert(safeOutputPin(LIGHT_RED_PIN) && safeOutputPin(LIGHT_GREEN_PIN) &&
-              LIGHT_RED_PIN != LIGHT_GREEN_PIN &&
+static_assert(safeOutputPin(LIGHT_RED_PIN) &&
               LIGHT_RED_PIN != MOTOR_ENA_PIN && LIGHT_RED_PIN != MOTOR_IN1_PIN &&
-              LIGHT_RED_PIN != MOTOR_IN2_PIN && LIGHT_RED_PIN != SERVO_SIGNAL_PIN &&
-              LIGHT_GREEN_PIN != MOTOR_ENA_PIN && LIGHT_GREEN_PIN != MOTOR_IN1_PIN &&
-              LIGHT_GREEN_PIN != MOTOR_IN2_PIN && LIGHT_GREEN_PIN != SERVO_SIGNAL_PIN,
-              "LED pins must not overlap motor/servo");
+              LIGHT_RED_PIN != MOTOR_IN2_PIN && LIGHT_RED_PIN != SERVO_SIGNAL_PIN,
+              "LED pin must not overlap motor/servo");

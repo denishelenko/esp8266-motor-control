@@ -44,7 +44,6 @@ uint32_t programResumeAt = 0, lastMotionAt = 0, lastBroadcastAt = 0, lastJogAt =
 uint32_t sequenceNumber = 0;
 uint32_t lastSerialHeartbeatAt = 0;
 bool redOutputOn = false;
-bool greenOutputOn = false;
 bool lightStrobeActive = false;
 uint32_t lastLightToggleAt = 0;
 bool motorHardwareReady = false;
@@ -65,14 +64,10 @@ const char *modeName() {
 
 MotorOutput localMotor;
 
-void writeLights(bool redEnabled, bool greenEnabled) {
+void writeLights(bool redEnabled) {
   if (redOutputOn != redEnabled) {
     redOutputOn = redEnabled;
     digitalWrite(LIGHT_RED_PIN, redEnabled ? HIGH : LOW);
-  }
-  if (greenOutputOn != greenEnabled) {
-    greenOutputOn = greenEnabled;
-    digitalWrite(LIGHT_GREEN_PIN, greenEnabled ? HIGH : LOW);
   }
 }
 
@@ -80,20 +75,20 @@ void updateLight(uint32_t now) {
   const bool motorIsMoving = localMotor.applied() != 0;
   if (!motorIsMoving) {
     lightStrobeActive = false;
-    writeLights(false, true);
+    writeLights(false);
     return;
   }
 
   if (!lightStrobeActive) {
     lightStrobeActive = true;
     lastLightToggleAt = now;
-    writeLights(true, false);
+    writeLights(true);
     return;
   }
 
   if (now - lastLightToggleAt >= LIGHT_STROBE_HALF_PERIOD_MS) {
     lastLightToggleAt = now;
-    writeLights(!redOutputOn, false);
+    writeLights(!redOutputOn);
   }
 }
 
@@ -204,10 +199,10 @@ void setDrive(const char *direction, uint8_t speed) {
 
 String stateJson() {
   JsonDocument d;
-  d["lightOn"] = redOutputOn || greenOutputOn;
+  d["lightOn"] = redOutputOn;
   d["lightStrobe"] = lightStrobeActive;
   d["lightOutput"] = redOutputOn;
-  d["lightColor"] = localMotor.applied() == 0 ? "green" : "red";
+  d["lightColor"] = redOutputOn ? "red" : "off";
   d["type"] = "state"; d["seq"] = sequenceNumber;
   d["position"] = positionM; d["target"] = targetM; d["limit"] = limitM();
   d["direction"] = driveDirection; d["speed"] = selectedSpeed; d["driveSpeed"] = driveSpeed;
@@ -395,9 +390,9 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
 void setup() {
   Serial.begin(SERIAL_BAUD); randomSeed(micros());
   digitalWrite(LIGHT_RED_PIN, LOW); pinMode(LIGHT_RED_PIN, OUTPUT);
-  digitalWrite(LIGHT_GREEN_PIN, LOW); pinMode(LIGHT_GREEN_PIN, OUTPUT);
+  // Green RGB channel is intentionally unused; only the red channel strobes.
   printBootInfo();
-  Serial.println("[START] Standalone: motor + servo + RGB status LED (green idle / red strobe)");
+  Serial.println("[START] Standalone: motor + servo + red status LED (off idle / red strobe)");
   motorHardwareReady = localMotor.begin();
   if (!motorHardwareReady) Serial.println("[ERROR] Motor PWM init failed; motion disabled");
   digitalWrite(SERVO_SIGNAL_PIN, LOW); pinMode(SERVO_SIGNAL_PIN, OUTPUT);
