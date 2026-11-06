@@ -2,16 +2,10 @@
 
 #include <Arduino.h>
 
-// The Home dev internet sketch requires the local home Wi-Fi profile.
-#if defined(__has_include)
-#if __has_include("../home_wifi.local.h")
+// The Home dev internet sketch always uses the local home Wi-Fi profile.
+// Keep home_wifi.local.h one folder above this config.h file.
 #include "../home_wifi.local.h"
 #define HOME_WIFI_CONFIGURED 1
-#endif
-#endif
-#ifndef HOME_WIFI_CONFIGURED
-#define HOME_WIFI_CONFIGURED 0
-#endif
 
 // This dedicated sketch is intended for the home router only.
 #define HOME_WIFI_ONLY 1
