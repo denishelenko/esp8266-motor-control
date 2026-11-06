@@ -43,6 +43,7 @@ bool programWaiting = false;
 uint32_t programResumeAt = 0, lastMotionAt = 0, lastBroadcastAt = 0, lastJogAt = 0;
 uint32_t calibrationStopAt = 0;
 String calibrationDirection = "right";
+uint32_t lastHomeWifiReportAt = 0;
 uint32_t sequenceNumber = 0;
 uint32_t lastSerialHeartbeatAt = 0;
 bool redOutputOn = false;
@@ -446,14 +447,30 @@ void setup() {
   // No servo pulse/movement until the user starts a program.
   Serial.println(PINOUT_SERIAL_TEXT);
   WiFi.persistent(false);
+  #if HOME_WIFI_CONFIGURED
+  WiFi.mode(WIFI_AP_STA);
+  #else
   WiFi.mode(WIFI_AP);
+  #endif
   disableWifiSleep();
-  Serial.println("[WIFI] Starting AP...");
+  Serial.println("[WIFI] Starting Motor-Control AP...");
   networkReady = WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0))
     && WiFi.softAP(WIFI_SSID, WIFI_PASSWORD, WIFI_CHANNEL, false, 4);
   Serial.printf("[WIFI] %s IP=%s channel=%ld\n", networkReady ? "OK" : "FAILED",
     WiFi.softAPIP().toString().c_str(), static_cast<long>(WiFi.channel()));
-  dnsServer.start(53, "*", IPAddress(192,168,4,1)); MDNS.begin("motor");
+  #if HOME_WIFI_CONFIGURED
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(HOME_WIFI_SSID, HOME_WIFI_PASSWORD);
+  Serial.printf("[WIFI] Joining home network '%s'...\n", HOME_WIFI_SSID);
+  #endif
+  dnsServer.start(53, "*", IPAddress(192,168,4,1));
+  MDNS.begin(
+    #if HOME_WIFI_CONFIGURED
+    HOME_MDNS_HOSTNAME
+    #else
+    "motor"
+    #endif
+  );
   httpServer.on("/", [](){ httpServer.send_P(200, "text/html; charset=utf-8", WEB_UI); });
   httpServer.onNotFound([](){ httpServer.sendHeader("Location", "/"); httpServer.send(302, "text/plain", ""); });
   httpServer.begin(); wsServer.begin(); wsServer.onEvent(handleWs);
@@ -468,6 +485,13 @@ void loop() {
   updateLight(now);
   updateServoCycle();
   if (now - lastBroadcastAt >= UI_BROADCAST_INTERVAL_MS) broadcastState();
+  #if HOME_WIFI_CONFIGURED
+  if (WiFi.status() == WL_CONNECTED && now - lastHomeWifiReportAt >= 5000) {
+    lastHomeWifiReportAt = now;
+    Serial.printf("[WIFI] Home network connected, IP=%s, site=http://%s.local/\n",
+      WiFi.localIP().toString().c_str(), HOME_MDNS_HOSTNAME);
+  }
+  #endif
   if (now - lastSerialHeartbeatAt >= 3000) {
     lastSerialHeartbeatAt = now;
     Serial.print("[OK] ESP працює | режим: ");

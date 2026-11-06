@@ -2,6 +2,18 @@
 
 #include <Arduino.h>
 
+// If the local Home dev internet profile exists, the firmware also joins it
+// while keeping the Motor-Control access point available.
+#if defined(__has_include)
+#if __has_include("../../Home dev internet/home_wifi.local.h")
+#include "../../Home dev internet/home_wifi.local.h"
+#define HOME_WIFI_CONFIGURED 1
+#endif
+#endif
+#ifndef HOME_WIFI_CONFIGURED
+#define HOME_WIFI_CONFIGURED 0
+#endif
+
 // Wi-Fi network created by the controller ESP8266.
 // Change these two values before using the system in a public place.
 constexpr char WIFI_SSID[] = "Motor-Control";
