@@ -29,7 +29,7 @@ WebSocketsServer wsServer(WEBSOCKET_PORT);
 LocalDnsServer dnsServer;
 
 enum class Role : uint8_t { Unknown, Ui };
-enum class Mode : uint8_t { Idle, Target, Jog, Program };
+enum class Mode : uint8_t { Idle, Target, Jog, Program, Calibration };
 constexpr uint8_t MAX_CLIENTS = 8;
 Role roles[MAX_CLIENTS] = {};
 Mode mode = Mode::Idle;
@@ -41,6 +41,8 @@ uint8_t activeProgram = 0;
 uint32_t programStep = 0;
 bool programWaiting = false;
 uint32_t programResumeAt = 0, lastMotionAt = 0, lastBroadcastAt = 0, lastJogAt = 0;
+uint32_t calibrationStopAt = 0;
+String calibrationDirection = "right";
 uint32_t sequenceNumber = 0;
 uint32_t lastSerialHeartbeatAt = 0;
 bool redOutputOn = false;
@@ -58,6 +60,7 @@ const char *modeName() {
     case Mode::Target: return "рух до цілі";
     case Mode::Jog: return "ручний рух";
     case Mode::Program: return "програма";
+    case Mode::Calibration: return "калібрування";
     default: return "idle";
   }
 }
@@ -207,6 +210,9 @@ String stateJson() {
   d["position"] = positionM; d["target"] = targetM; d["limit"] = limitM();
   d["direction"] = driveDirection; d["speed"] = selectedSpeed; d["driveSpeed"] = driveSpeed;
   d["mode"] = modeName(); d["program"] = activeProgram; d["motorOnline"] = motorOnline();
+  d["calibrationDirection"] = calibrationDirection;
+  d["calibrationSecondsRemaining"] = mode == Mode::Calibration && calibrationStopAt > millis()
+    ? (calibrationStopAt - millis()) / 1000.0f : 0.0f;
   d["transport"] = "local";
   d["appliedPwm"] = localMotor.applied();
   d["servoAvailable"] = true;
@@ -228,7 +234,7 @@ void broadcastState() {
 }
 void stopAll() {
   motionOwner = -1;
-  mode = Mode::Idle; activeProgram = 0; programWaiting = false; targetM = positionM;
+  mode = Mode::Idle; activeProgram = 0; programWaiting = false; calibrationStopAt = 0; targetM = positionM;
   setDrive("stop", 0);
   stopServoCycle();
   broadcastState();
@@ -237,12 +243,30 @@ void stopAll() {
 void chooseProgramTarget() {
   static const float p1[] = {-1.70f, 1.70f};
   static const float p2[] = {-0.45f, 0.45f, -0.90f, 0.90f, -1.35f, 1.35f, -1.70f, 1.70f};
-  static const float p3[] = {-1.60f, 0.80f, 1.60f, -0.80f, 0.0f};
   if (activeProgram == 1) targetM = p1[programStep % 2];
   else if (activeProgram == 2) targetM = p2[programStep % 8];
-  else if (activeProgram == 3) targetM = p3[programStep % 5];
-  else { targetM = float(random(-170, 171)) / 100.0f; }
-  targetM = constrain(targetM * limitM() / 1.8f, -limitM(), limitM());
+  else if (activeProgram == 3) {
+    // Ривки: короткі непередбачувані переміщення на 1–3 м із повною
+    // потужністю. Біля краю напрямок автоматично змінюється.
+    const float jump = 1.0f + float(random(0, 21)) / 10.0f;
+    int direction = random(0, 2) ? 1 : -1;
+    float candidate = positionM + direction * jump;
+    if (candidate > limitM() || candidate < -limitM()) {
+      direction = -direction;
+      candidate = positionM + direction * jump;
+    }
+    targetM = constrain(candidate, -limitM(), limitM());
+  } else {
+    // Рандом: довгі переходи щонайменше приблизно на 4 м від поточної точки.
+    const float distance = 4.0f + float(random(0, 31)) / 10.0f;
+    int direction = random(0, 2) ? 1 : -1;
+    float candidate = positionM + direction * distance;
+    if (candidate > limitM() || candidate < -limitM()) {
+      direction = -direction;
+      candidate = positionM + direction * distance;
+    }
+    targetM = constrain(candidate, -limitM(), limitM());
+  }
   programWaiting = false;
 }
 
@@ -272,6 +296,14 @@ void updateMotion() {
   if (mode == Mode::Program && programWaiting) {
     if ((int32_t)(now - programResumeAt) >= 0) chooseProgramTarget(); else return;
   }
+  if (mode == Mode::Calibration) {
+    if ((int32_t)(now - calibrationStopAt) >= 0) {
+      stopAll();
+      return;
+    }
+    setDrive(calibrationDirection.c_str(), selectedSpeed);
+    return;
+  }
   if (!motorOnline() && mode != Mode::Idle) {
     stopAll();
     return;
@@ -283,7 +315,8 @@ void updateMotion() {
     const int16_t applied = localMotor.applied();
     const uint8_t appliedPercent = (uint32_t(abs(applied)) * 100U + PWM_MAX / 2U) / PWM_MAX;
     const float step = calibratedSpeed(appliedPercent, applied >= 0) * dt;
-    setDrive(right ? "right" : "left", selectedSpeed);
+    const uint8_t motionSpeed = activeProgram == 3 ? SPEED_MAX_PERCENT : selectedSpeed;
+    setDrive(right ? "right" : "left", motionSpeed);
     if ((applied > 0) == right && step >= fabs(error)) { reachedTarget(); return; }
     positionM += applied > 0 ? step : applied < 0 ? -step : 0;
     positionM = constrain(positionM, -limitM(), limitM());
@@ -344,6 +377,20 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
     mode = Mode::Program; activeProgram = id; programStep = 0;
     startServoCycle();
     chooseProgramTarget(); broadcastState(); return;
+  }
+  if (!strcmp(t, "calibration")) {
+    if (!motorOnline() || !d["seconds"].is<int>() || d["seconds"].as<int>() < 1 ||
+        d["seconds"].as<int>() > 4) return;
+    const char *dir = d["direction"] | "right";
+    if (strcmp(dir, "right") && strcmp(dir, "left")) return;
+    motionOwner = client; ownerSeenAt = millis();
+    stopServoCycle();
+    activeProgram = 0; programWaiting = false; mode = Mode::Calibration;
+    calibrationDirection = dir;
+    selectedSpeed = constrain(d["speed"] | selectedSpeed, SPEED_MIN_PERCENT, SPEED_MAX_PERCENT);
+    calibrationStopAt = millis() + uint32_t(d["seconds"].as<int>()) * 1000UL;
+    setDrive(calibrationDirection.c_str(), selectedSpeed);
+    broadcastState(); return;
   }
   if (!strcmp(t, "servo")) {
     const bool enabled = d["enabled"] | true;

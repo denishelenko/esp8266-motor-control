@@ -206,11 +206,34 @@ void selectNextProgramTarget(uint8_t index) {
   const float l = TRACK_LIMIT_M;
   const uint32_t step = c.programStep++;
   switch (c.program) {
-    case 1: c.target = (step & 1) ? -l : l; break;                         // pendulum
-    case 2: { const float levels[] = {0.2f*l, 0.4f*l, 0.6f*l, 0.8f*l, l};
-              const float a = levels[step % 5]; c.target = (step / 5 & 1) ? -a : a; break; }
-    case 3: { const float jumps[] = {-0.25f*l, 0.5f*l, -0.75f*l, 0.1f*l, l}; c.target = jumps[step % 5]; break; }
-    default: c.target = float(random(-int(l * 100), int(l * 100) + 1)) / 100.0f; break;
+    case 1: c.target = (step & 1) ? -l : l; break; // маятник: край до краю
+    case 2: { // драбинка: зупинка через кожні 2 м від центру
+      static const float levels[] = {-2, 2, -4, 4, -6, 6, -8, 8};
+      c.target = constrain(levels[step % 8], -l, l);
+      break;
+    }
+    case 3: { // ривки: короткі хаотичні стрибки на 1–3 м
+      const float jump = 1.0f + float(random(0, 21)) / 10.0f;
+      int direction = random(0, 2) ? 1 : -1;
+      float candidate = c.position + direction * jump;
+      if (candidate > l || candidate < -l) {
+        direction = -direction;
+        candidate = c.position + direction * jump;
+      }
+      c.target = constrain(candidate, -l, l);
+      break;
+    }
+    default: { // рандом: довгі переходи, орієнтовно не менше 4 м
+      const float distance = 4.0f + float(random(0, 31)) / 10.0f;
+      int direction = random(0, 2) ? 1 : -1;
+      float candidate = c.position + direction * distance;
+      if (candidate > l || candidate < -l) {
+        direction = -direction;
+        candidate = c.position + direction * distance;
+      }
+      c.target = constrain(candidate, -l, l);
+      break;
+    }
   }
   c.mode = MotionMode::Program;
 }
@@ -251,10 +274,11 @@ void updateCarriage(uint8_t index) {
     return;
   }
   const float direction = delta > 0 ? 1.0f : -1.0f;
-  const float speedMps = estimatedSpeedMps(index, direction > 0, c.speed);
+  const uint8_t motionSpeed = c.mode == MotionMode::Program && c.program == 3 ? 100 : c.speed;
+  const float speedMps = estimatedSpeedMps(index, direction > 0, motionSpeed);
   const float next = c.position + direction * speedMps * dt;
   c.position = direction > 0 ? min(next, c.target) : max(next, c.target);
-  c.outputPwm = int16_t(direction * map(c.speed, 0, 100, 0, PWM_MAX));
+  c.outputPwm = int16_t(direction * map(motionSpeed, 0, 100, 0, PWM_MAX));
 }
 
 void broadcastState() {

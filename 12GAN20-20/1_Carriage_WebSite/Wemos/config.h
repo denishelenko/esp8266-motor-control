@@ -79,9 +79,11 @@ constexpr uint8_t SPEED_DEFAULT_PERCENT = 50;
 
 // Working travel is 16 metres total: centre 0 and physical ends -8..+8 m.
 // The 20 m rope keeps approximately 2 m outside the working area on each side.
-// SAFE_MARGIN_M adds a small software reserve before the mechanical stops.
+// SAFE_MARGIN_M is an additional software reserve beyond the rope's 2 m reserve.
 constexpr float TRACK_LENGTH_M = 16.0f;
-constexpr float SAFE_MARGIN_M = 0.20f;
+// The 20 m rope has a 2 m reserve on both physical ends, leaving exactly
+// 16 m of working travel: -8 m ... +8 m from the manually defined centre.
+constexpr float SAFE_MARGIN_M = 0.0f;
 constexpr float POSITION_TOLERANCE_M = 0.015f;
 
 // Replace these example values after measuring your actual mechanism.
@@ -101,6 +103,22 @@ constexpr CalibrationPoint SPEED_CALIBRATION[] = {
   {100, 0.88f, 0.88f},
 };
 constexpr size_t SPEED_CALIBRATION_COUNT = sizeof(SPEED_CALIBRATION) / sizeof(SPEED_CALIBRATION[0]);
+
+// Заповніть після тестів у ручному калібруванні. Відстань у метрах за
+// фіксований час на вибраній швидкості; напрямки зберігаються окремо.
+struct TimedCalibrationPoint {
+  uint8_t seconds;
+  uint8_t speedPercent;
+  float rightMeters;
+  float leftMeters;
+};
+constexpr TimedCalibrationPoint TIME_CALIBRATION[] = {
+  {1, 50, 0.00f, 0.00f},
+  {2, 50, 0.00f, 0.00f},
+  {3, 50, 0.00f, 0.00f},
+  {4, 50, 0.00f, 0.00f},
+};
+constexpr size_t TIME_CALIBRATION_COUNT = sizeof(TIME_CALIBRATION) / sizeof(TIME_CALIBRATION[0]);
 
 // Safety timings.
 constexpr uint32_t JOG_DEADMAN_TIMEOUT_MS = 650;

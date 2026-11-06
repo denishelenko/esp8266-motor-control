@@ -347,9 +347,9 @@ margin:-1px auto -3px}
 <p class="sectionTitle">Режими роботи</p>
 <div class="automation"><div class="programs">
 <button data-program="1" class="active">Маятник<small>від краю до краю</small></button>
-<button data-program="2">Драбинка<small>амплітуда зростає</small></button>
-<button data-program="3">Ривки<small>нерівний маршрут</small></button>
-<button data-program="4">Рандом<small>випадкові точки</small></button>
+<button data-program="2">Драбинка<small>зупинка кожні 2 м</small></button>
+<button data-program="3">Ривки<small>швидкі 1–3 м на 100%</small></button>
+<button data-program="4">Рандом<small>довгі переходи від 4 м</small></button>
 </div><section class="servoPanel"><div class="servoTitle">Керування сервоприводом</div><div class="servoButtons"><button data-servo="45" class="selected">45°</button><button data-servo="90">90°</button><button id="servoOff" class="servoOff active">Вимк.</button></div><div id="servoState" class="srOnly" aria-live="polite">вимкнено · 0°</div></section></div>
 <details>
 <summary>Ручне калібрування</summary>
@@ -375,10 +375,10 @@ const pct=v=>((v+8)/16*100)+"%";
 function affected(fn){fn(c[selected]);if(linked)fn(c[selected?0:1])}
 function close(x){x.servo=0;x.nextServo=0;x.servoEnabled=false}
 function stop(x,keepServo=false){x.t=x.p;x.mode="stop";if(!keepServo)close(x)}
-function nextTarget(x){let n=x.step++;x.t=x.prog===1?(n%2?-8:8):x.prog===2?(n%2?-1:1)*[1.6,3.2,4.8,6.4,8][Math.floor(n/2)%5]:x.prog===3?[-2,4,-6,.8,8][n%5]:Math.random()*16-8}
+function nextTarget(x){let n=x.step++;if(x.prog===1)x.t=n%2?-8:8;else if(x.prog===2)x.t=[-2,2,-4,4,-6,6,-8,8][n%8];else if(x.prog===3){const d=1+Math.floor(Math.random()*3),dir=Math.random()<.5?-1:1;let target=x.p+dir*d;if(target>8||target<-8)target=x.p-dir*d;x.t=Math.max(-8,Math.min(8,target))}else{const d=4+Math.random()*3,dir=Math.random()<.5?-1:1;let target=x.p+dir*d;if(target>8||target<-8)target=x.p-dir*d;x.t=Math.max(-8,Math.min(8,target))}}
 function start(x){x.mode="program";x.step=0;if(!x.servoEnabled){x.servo=0;x.servoEnabled=true;x.nextServo=performance.now()+2000}nextTarget(x)}
 function redraw(){let x=c[selected];$("pos").textContent=x.p.toFixed(2);$("which").textContent="каретка "+(selected+1);$("ipsc").style.left=pct(x.p);$("targetDot").style.left=pct(x.t);if(!drag)$("target").value=x.t;$("speed").value=x.s;$("speedOut").textContent=x.s+"%";$("stop").textContent=x.mode==="stop"?"СТАРТ":"СТОП";let phase=x.visualServo<x.servo-1?"відкривається":x.visualServo>x.servo+1?"закривається":x.servo?"відкрито":"закрито";$("servoState").textContent=x.servoEnabled?phase+" · "+Math.round(x.visualServo)+"°":"вимкнено · 0°";all(".carriage").forEach(b=>{const carriage=c[+b.dataset.carriage-1];b.classList.toggle("active",+b.dataset.carriage===selected+1);b.classList.toggle("moving",(+b.dataset.carriage!==2||demoNodeOnline)&&carriage.mode!=="stop"&&Math.abs(carriage.t-carriage.p)>.015)});all("[data-program]").forEach(b=>b.classList.toggle("active",+b.dataset.program===x.prog));all("[data-servo]").forEach(b=>{b.classList.toggle("selected",+b.dataset.servo===x.angle);b.classList.toggle("active",+b.dataset.servo===x.angle&&x.servoEnabled)});$("servoOff").classList.toggle("active",!x.servoEnabled)}
-function tick(n){let dt=Math.min(.05,(n-last)/1000);last=n;if(!demoNodeOnline){stop(c[1]);if(linked)stop(c[0])}c.forEach(x=>{if(x.servoEnabled&&x.nextServo&&n>=x.nextServo){x.servo=x.servo?0:x.angle;x.nextServo=n+(x.servo?1000:2000)}if(x.mode==="program"&&Math.abs(x.t-x.p)<.03)nextTarget(x);let sd=x.servo-x.visualServo,servoStep=90*dt/.35;x.visualServo+=Math.sign(sd)*Math.min(Math.abs(sd),servoStep);if(x.mode!=="stop"){let d=x.t-x.p;if(Math.abs(d)>.01)x.p+=Math.sign(d)*Math.min(Math.abs(d),.8*x.s/100*dt);else if(x.mode==="target")x.mode="stop"}});redraw();requestAnimationFrame(tick)}
+function tick(n){let dt=Math.min(.05,(n-last)/1000);last=n;if(!demoNodeOnline){stop(c[1]);if(linked)stop(c[0])}c.forEach(x=>{if(x.servoEnabled&&x.nextServo&&n>=x.nextServo){x.servo=x.servo?0:x.angle;x.nextServo=n+(x.servo?1000:2000)}if(x.mode==="program"&&Math.abs(x.t-x.p)<.03)nextTarget(x);let sd=x.servo-x.visualServo,servoStep=90*dt/.35;x.visualServo+=Math.sign(sd)*Math.min(Math.abs(sd),servoStep);if(x.mode!=="stop"){let d=x.t-x.p;if(Math.abs(d)>.01){const speed=x.prog===3?100:x.s;x.p+=Math.sign(d)*Math.min(Math.abs(d),.8*speed/100*dt)}else if(x.mode==="target")x.mode="stop"}});redraw();requestAnimationFrame(tick)}
 all(".carriage").forEach(b=>b.onclick=()=>{selected=+b.dataset.carriage-1;redraw()});
 let mouseDownX=0,mouseScrollLeft=0,mouseDragging=false,suppressCarriageClick=false;
 carriageScroller.addEventListener("pointerdown",e=>{if(e.pointerType!=="mouse"||e.button!==0)return;mouseDragging=true;suppressCarriageClick=false;mouseDownX=e.clientX;mouseScrollLeft=carriageScroller.scrollLeft});
