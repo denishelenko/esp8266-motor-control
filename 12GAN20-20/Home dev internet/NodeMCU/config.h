@@ -2,9 +2,11 @@
 
 #include <Arduino.h>
 
-// The Home dev internet sketch always uses the local home Wi-Fi profile.
-// Keep home_wifi.local.h one folder above this config.h file.
-#include "../home_wifi.local.h"
+// Enter the 2.4 GHz home Wi-Fi credentials here before uploading.
+// These are placeholders so credentials are not published to Git.
+constexpr char HOME_WIFI_SSID[] = "ENTER_WIFI_NAME";
+constexpr char HOME_WIFI_PASSWORD[] = "ENTER_WIFI_PASSWORD";
+constexpr char HOME_MDNS_HOSTNAME[] = "motor";
 #define HOME_WIFI_CONFIGURED 1
 
 // This dedicated sketch is intended for the home router only.
