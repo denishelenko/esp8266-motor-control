@@ -68,9 +68,9 @@ constexpr uint16_t SERVO_MIN_PULSE_US = 520;
 constexpr uint16_t SERVO_MAX_PULSE_US = 2520;
 constexpr uint16_t SERVO_FREQUENCY_HZ = 333;
 // The servo is commanded directly to an endpoint. After reaching it, it stays
-// open for 1 s and closed for 2 s. Actual travel speed is set by the servo.
+// open for 1 s and closed for 2.5 s. Actual travel speed is set by the servo.
 constexpr uint32_t SERVO_OPEN_HOLD_MS = 1000;
-constexpr uint32_t SERVO_CLOSED_HOLD_MS = 2000;
+constexpr uint32_t SERVO_CLOSED_HOLD_MS = 2500;
 
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
