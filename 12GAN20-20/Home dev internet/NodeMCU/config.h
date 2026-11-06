@@ -2,8 +2,7 @@
 
 #include <Arduino.h>
 
-// If the local Home dev internet profile exists, the firmware also joins it
-// while keeping the Motor-Control access point available.
+// The Home dev internet sketch requires the local home Wi-Fi profile.
 #if defined(__has_include)
 #if __has_include("../home_wifi.local.h")
 #include "../home_wifi.local.h"
@@ -12,6 +11,12 @@
 #endif
 #ifndef HOME_WIFI_CONFIGURED
 #define HOME_WIFI_CONFIGURED 0
+#endif
+
+// This dedicated sketch is intended for the home router only.
+#define HOME_WIFI_ONLY 1
+#if HOME_WIFI_ONLY && !HOME_WIFI_CONFIGURED
+#error Missing ../home_wifi.local.h. Create it before compiling this Home dev internet sketch.
 #endif
 
 // Wi-Fi network created by the controller ESP8266.

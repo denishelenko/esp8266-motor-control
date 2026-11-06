@@ -451,12 +451,30 @@ void setup() {
   // No servo pulse/movement until the user starts a program.
   Serial.println(PINOUT_SERIAL_TEXT);
   WiFi.persistent(false);
+  disableWifiSleep();
+  #if HOME_WIFI_ONLY
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(HOME_WIFI_SSID, HOME_WIFI_PASSWORD);
+  Serial.printf("[WIFI] Joining home network '%s'...\n", HOME_WIFI_SSID);
+  const uint32_t wifiWaitStartedAt = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - wifiWaitStartedAt < 20000) {
+    delay(250);
+    Serial.print('.');
+  }
+  Serial.println();
+  networkReady = WiFi.status() == WL_CONNECTED;
+  if (networkReady) {
+    Serial.printf("[WIFI] Home network connected, IP=%s\n", WiFi.localIP().toString().c_str());
+  } else {
+    Serial.printf("[WIFI] Home network connection failed, status=%d\n", int(WiFi.status()));
+  }
+  #else
   #if HOME_WIFI_CONFIGURED
   WiFi.mode(WIFI_AP_STA);
   #else
   WiFi.mode(WIFI_AP);
   #endif
-  disableWifiSleep();
   Serial.println("[WIFI] Starting Motor-Control AP...");
   networkReady = WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0))
     && WiFi.softAP(WIFI_SSID, WIFI_PASSWORD, WIFI_CHANNEL, false, 4);
@@ -468,6 +486,7 @@ void setup() {
   Serial.printf("[WIFI] Joining home network '%s'...\n", HOME_WIFI_SSID);
   #endif
   dnsServer.start(53, "*", IPAddress(192,168,4,1));
+  #endif
   MDNS.begin(
     #if HOME_WIFI_CONFIGURED
     HOME_MDNS_HOSTNAME
@@ -478,7 +497,11 @@ void setup() {
   httpServer.on("/", [](){ httpServer.send_P(200, "text/html; charset=utf-8", WEB_UI); });
   httpServer.onNotFound([](){ httpServer.sendHeader("Location", "/"); httpServer.send(302, "text/plain", ""); });
   httpServer.begin(); wsServer.begin(); wsServer.onEvent(handleWs);
+  #if HOME_WIFI_ONLY
+  Serial.println("Open http://motor-control.local or use the IP shown above");
+  #else
   Serial.println("Open http://motor.local or http://192.168.4.1");
+  #endif
 }
 
 void loop() {
@@ -488,6 +511,9 @@ void loop() {
   localMotor.tick(now);
   updateLight(now);
   updateServoCycle();
+  #if HOME_WIFI_ONLY
+  networkReady = WiFi.status() == WL_CONNECTED;
+  #endif
   if (now - lastBroadcastAt >= UI_BROADCAST_INTERVAL_MS) broadcastState();
   #if HOME_WIFI_CONFIGURED
   if (WiFi.status() == WL_CONNECTED && !homeWifiReported) {
