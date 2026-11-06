@@ -1,51 +1,37 @@
-# Бігунок — Arduino IDE
+# 12GAN20-20 — система керування каретками
 
-Цей репозиторій тепер орієнтований на Arduino IDE. Відкривайте потрібний `.ino` у папці `ArduinoIDE` разом з усіма файлами цієї папки.
+Усі актуальні Arduino IDE-скетчі та локальні демо знаходяться в папці [12GAN20-20](12GAN20-20).
 
-## Основні прошивки
+```text
+12GAN20-20/
+  1_Carriage_WebSite/
+    NodeMCU/
+    ESP32S3/
+    Wemos/
+  2_Carriages_WebSite/
+    ESP32_Controller_Carriage_1/
+    NodeMCU_Carriage_2/
+  web-interface-demo.html
+  web-interface-two-carriages-demo.html
+```
 
-| Папка | Що робить | Коли використовувати |
-|---|---|---|
-| `03_OneESP` | Одна NodeMCU: сайт, L298N і серво | Один моторний вузол на одній платі |
-| `09_NodeMCU_MotorServoLED` | Одна NodeMCU: сайт, мотор, серво і червоний LED | Актуальна NodeMCU-версія зі стробоскопом LED |
-| `10_WemosPro_MotorServoLED` | Те саме для Wemos D1 mini Pro | Якщо використовується Wemos |
-| `11_ESP32S3_MotorServoLED` | Те саме для ESP32-S3 | Якщо головна плата — ESP32-S3 |
-| `01_TwoESP_Controller` | Головна ESP: Wi-Fi-сайт і ESP-NOW передавач | Дві плати: сайт знаходиться на контролері |
-| `02_TwoESP_Motor` | Друга ESP: ESP-NOW приймач і L298N | Друга плата без сайту, лише мотор |
-| `12_TwoCarriages_ESP32_Controller` | Контролер системи двох кареток | Розширена система з ESP32-контролером |
-| `13_TwoCarriages_NodeMCU` | Моторний вузол другої каретки | Пара до скетчу 12 |
+## Який скетч прошивати
 
-## Тестові скетчі
+Для однієї каретки із сайтом оберіть одну з трьох платформ у `1_Carriage_WebSite`:
 
-| Папка | Призначення |
-|---|---|
-| `04_Calibration` | Вимірювання реальної швидкості рулеткою |
-| `05_Motor_OneSecond_Test` | Простий стендовий тест мотора |
-| `06_TwoMotors_OneESP` | Два мотори на двох мостах одного L298N |
-| `14_Travel_Time_Test` | Вимірювання часу проходження робочих 16 м |
-| `15_Servo_Travel_Test` | Окремий тест сервопривода |
+- `NodeMCU/NodeMCU.ino` — NodeMCU v3;
+- `ESP32S3/ESP32S3.ino` — ESP32-S3;
+- `Wemos/Wemos.ino` — Wemos D1 mini Pro.
 
-## Що обирати для поточної роботи
+Для двох кареток:
 
-Для одного вузла з сайтом: `09_NodeMCU_MotorServoLED` або `10_WemosPro_MotorServoLED`.
+- `2_Carriages_WebSite/ESP32_Controller_Carriage_1/ESP32_Controller_Carriage_1.ino` — ESP32 із сайтом і керуванням першою кареткою;
+- `2_Carriages_WebSite/NodeMCU_Carriage_2/NodeMCU_Carriage_2.ino` — NodeMCU другої каретки.
 
-Для двох ESP: `01_TwoESP_Controller` прошивається на головну плату із сайтом, а `02_TwoESP_Motor` — на моторну NodeMCU.
+Локальні HTML-файли — це лише візуальні демо для браузера, вони не керують реальною платою.
 
-`12` і `13` — окрема розширена схема саме для двох кареток. Вона не потрібна для простого однокареткового тесту.
+Wi-Fi для актуальних скетчів: `Motor-Control`, пароль `motor8266`, адреса `http://192.168.4.1`.
 
-## Підключення і налаштування
+Робоча площа троса: 16 м, орієнтовний діапазон від центру `−8…+8 м`. Власні вимірювання швидкості потрібно внести у `config.h` відповідного скетчу.
 
-- Wi-Fi: `Motor-Control`
-- Пароль: `motor8266`
-- Сайт ESP: `http://192.168.4.1`
-- Робоча площа: `16 м` загалом, орієнтовно `−8…+8 м` від центру.
-- Калібрувальні значення швидкості потрібно замінити власними вимірами.
-
-Детальна інструкція для standalone-варіантів: [README_STANDALONE_LED.md](README_STANDALONE_LED.md).
-
-Локальні HTML-перегляди інтерфейсу:
-
-- [web-interface-demo.html](web-interface-demo.html)
-- [web-interface-two-carriages-demo.html](web-interface-two-carriages-demo.html)
-
-Не відкривайте кілька різних `.ino` як вкладки одного скетчу — це спричинить дублювання `setup()` і `loop()`.
+Детальні схеми: [README_STANDALONE_LED.md](12GAN20-20/README_STANDALONE_LED.md) і [README_TWO_CARRIAGES.md](12GAN20-20/README_TWO_CARRIAGES.md).

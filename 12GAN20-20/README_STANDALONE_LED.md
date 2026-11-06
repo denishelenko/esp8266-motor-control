@@ -5,11 +5,11 @@
 
 | Плата | Папка / файл .ino |
 |---|---|
-| NodeMCU v3 (ESP8266) | 09_NodeMCU_MotorServoLED/09_NodeMCU_MotorServoLED.ino |
-| Wemos D1 mini Pro (ESP8266) | 10_WemosPro_MotorServoLED/10_WemosPro_MotorServoLED.ino |
-| ESP32-S3 N16R8 DevKitC-1 | 11_ESP32S3_MotorServoLED/11_ESP32S3_MotorServoLED.ino |
+| NodeMCU v3 (ESP8266) | 1_Carriage_WebSite/NodeMCU/NodeMCU.ino |
+| Wemos D1 mini Pro (ESP8266) | 1_Carriage_WebSite/Wemos/Wemos.ino |
+| ESP32-S3 N16R8 DevKitC-1 | 1_Carriage_WebSite/ESP32S3/ESP32S3.ino |
 
-У репозиторії папки знаходяться всередині ArduinoIDE. В архіві вони лежать поряд із цією інструкцією.
+У репозиторії ці папки знаходяться всередині `12GAN20-20` і є самодостатніми Arduino IDE-скетчами.
 Кожна плата самостійно створює сайт і керує своїми приводами: ESP-NOW, іншої плати та роутера немає.
 
 ## Підключення
