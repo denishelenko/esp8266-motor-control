@@ -4,4 +4,4 @@
 // home_wifi.local.h не відстежується Git.
 constexpr char HOME_WIFI_SSID[] = "YOUR_WIFI_NAME";
 constexpr char HOME_WIFI_PASSWORD[] = "YOUR_WIFI_PASSWORD";
-constexpr char HOME_MDNS_HOSTNAME[] = "motor-control";
+constexpr char HOME_MDNS_HOSTNAME[] = "motor";
