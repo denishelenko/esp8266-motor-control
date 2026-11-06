@@ -43,7 +43,7 @@ bool programWaiting = false;
 uint32_t programResumeAt = 0, lastMotionAt = 0, lastBroadcastAt = 0, lastJogAt = 0;
 uint32_t calibrationStopAt = 0;
 String calibrationDirection = "right";
-uint32_t lastHomeWifiReportAt = 0;
+bool homeWifiReported = false;
 uint32_t sequenceNumber = 0;
 uint32_t lastSerialHeartbeatAt = 0;
 bool redOutputOn = false;
@@ -486,10 +486,12 @@ void loop() {
   updateServoCycle();
   if (now - lastBroadcastAt >= UI_BROADCAST_INTERVAL_MS) broadcastState();
   #if HOME_WIFI_CONFIGURED
-  if (WiFi.status() == WL_CONNECTED && now - lastHomeWifiReportAt >= 5000) {
-    lastHomeWifiReportAt = now;
+  if (WiFi.status() == WL_CONNECTED && !homeWifiReported) {
     Serial.printf("[WIFI] Home network connected, IP=%s, site=http://%s.local/\n",
       WiFi.localIP().toString().c_str(), HOME_MDNS_HOSTNAME);
+    homeWifiReported = true;
+  } else if (WiFi.status() != WL_CONNECTED) {
+    homeWifiReported = false;
   }
   #endif
   if (now - lastSerialHeartbeatAt >= 3000) {
