@@ -246,10 +246,14 @@ void stopAll() {
 }
 
 void chooseProgramTarget() {
-  static const float p1[] = {-1.70f, 1.70f};
-  static const float p2[] = {-0.45f, 0.45f, -0.90f, 0.90f, -1.35f, 1.35f, -1.70f, 1.70f};
-  if (activeProgram == 1) targetM = p1[programStep % 2];
-  else if (activeProgram == 2) targetM = p2[programStep % 8];
+  static const float p2[] = {-2.0f, 2.0f, -4.0f, 4.0f, -6.0f, 6.0f, -8.0f, 8.0f};
+  if (activeProgram == 1) {
+    // Маятник: від одного фізичного краю робочої зони до іншого.
+    targetM = (programStep % 2) ? -limitM() : limitM();
+  } else if (activeProgram == 2) {
+    // Драбинка: зупинки на відстанях 2, 4, 6 та 8 м від центру.
+    targetM = constrain(p2[programStep % 8], -limitM(), limitM());
+  }
   else if (activeProgram == 3) {
     // Ривки: короткі непередбачувані переміщення на 1–3 м із повною
     // потужністю. Біля краю напрямок автоматично змінюється.
