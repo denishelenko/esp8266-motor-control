@@ -73,8 +73,6 @@ void writeLights(bool redEnabled) {
     redOutputOn = redEnabled;
     digitalWrite(LIGHT_RED_PIN, redEnabled ? HIGH : LOW);
   }
-  // Common-cathode RGB LED: green is on while the carriage is stopped.
-  digitalWrite(LIGHT_GREEN_PIN, redEnabled ? LOW : HIGH);
 }
 
 void updateLight(uint32_t now) {
@@ -82,8 +80,12 @@ void updateLight(uint32_t now) {
   if (!motorIsMoving) {
     lightStrobeActive = false;
     writeLights(false);
+    digitalWrite(LIGHT_GREEN_PIN, HIGH);
     return;
   }
+
+  // While moving, green stays off and only the red channel strobes.
+  digitalWrite(LIGHT_GREEN_PIN, LOW);
 
   if (!lightStrobeActive) {
     lightStrobeActive = true;
