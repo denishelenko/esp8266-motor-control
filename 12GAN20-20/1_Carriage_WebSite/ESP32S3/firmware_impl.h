@@ -73,6 +73,8 @@ void writeLights(bool redEnabled) {
     redOutputOn = redEnabled;
     digitalWrite(LIGHT_RED_PIN, redEnabled ? HIGH : LOW);
   }
+  // Common-cathode RGB LED: green is on while the carriage is stopped.
+  digitalWrite(LIGHT_GREEN_PIN, redEnabled ? LOW : HIGH);
 }
 
 void updateLight(uint32_t now) {
@@ -437,10 +439,10 @@ void handleWs(uint8_t client, WStype_t type, uint8_t *payload, size_t length) {
 
 void setup() {
   Serial.begin(SERIAL_BAUD); randomSeed(micros());
-  digitalWrite(LIGHT_RED_PIN, LOW); pinMode(LIGHT_RED_PIN, OUTPUT);
-  // Green RGB channel is intentionally unused; only the red channel strobes.
+  pinMode(LIGHT_RED_PIN, OUTPUT); pinMode(LIGHT_GREEN_PIN, OUTPUT);
+  digitalWrite(LIGHT_RED_PIN, LOW); digitalWrite(LIGHT_GREEN_PIN, HIGH);
   printBootInfo();
-  Serial.println("[START] Standalone: motor + servo + red status LED (off idle / red strobe)");
+  Serial.println("[START] Standalone: motor + servo + RGB status (green idle / red strobe while moving)");
   motorHardwareReady = localMotor.begin();
   if (!motorHardwareReady) Serial.println("[ERROR] Motor PWM init failed; motion disabled");
   digitalWrite(SERVO_SIGNAL_PIN, LOW); pinMode(SERVO_SIGNAL_PIN, OUTPUT);

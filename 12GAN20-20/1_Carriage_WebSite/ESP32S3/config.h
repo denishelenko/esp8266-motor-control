@@ -30,34 +30,37 @@ constexpr char CONTROLLER_IP[] = "192.168.4.1";
 #error Select ESP32S3 Dev Module, not ESP32/ESP8266
 #endif
 constexpr char PINOUT_NAME[] = "ESP32-S3 N16R8";
-constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] GPIO5=ENA GPIO6=IN1 GPIO7=IN2 GPIO15=SERVO GPIO4=RED";
+constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] GPIO5=ENA GPIO6=IN1 GPIO7=IN2 GPIO15=SERVO GPIO16=RED GPIO17=GREEN";
 constexpr uint8_t MOTOR_ENA_PIN = 5;
 constexpr uint8_t MOTOR_IN1_PIN = 6;
 constexpr uint8_t MOTOR_IN2_PIN = 7;
 constexpr uint8_t SERVO_SIGNAL_PIN = 15;
-constexpr uint8_t LIGHT_RED_PIN = 4;
+constexpr uint8_t LIGHT_RED_PIN = 16;
+constexpr uint8_t LIGHT_GREEN_PIN = 17;
 #elif defined(PINOUT_WEMOS_D1_MINI_PRO)
 #if !defined(ESP8266)
 #error Select Wemos D1 mini Pro (ESP8266)
 #endif
 constexpr char PINOUT_NAME[] = "Wemos D1 Mini Pro";
-constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D6=IN2 D5=SERVO D7=RED";
+constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D6=IN2 D5=SERVO D0=RED D7=GREEN";
 constexpr uint8_t MOTOR_ENA_PIN = 5;
 constexpr uint8_t MOTOR_IN1_PIN = 4;
 constexpr uint8_t MOTOR_IN2_PIN = 12;
 constexpr uint8_t SERVO_SIGNAL_PIN = 14;
-constexpr uint8_t LIGHT_RED_PIN = 13;
+constexpr uint8_t LIGHT_RED_PIN = 16; // D0-equivalent label is board-specific
+constexpr uint8_t LIGHT_GREEN_PIN = 17; // D7-equivalent label is board-specific
 #else
 #if !defined(ESP8266)
 #error Select NodeMCU 1.0 (ESP-12E Module)
 #endif
 constexpr char PINOUT_NAME[] = "NodeMCU v3";
-constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D5=IN2 D6=SERVO D7=RED";
+constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] D1=ENA D2=IN1 D5=IN2 D6=SERVO D0=RED D7=GREEN";
 constexpr uint8_t MOTOR_ENA_PIN = 5;
 constexpr uint8_t MOTOR_IN1_PIN = 4;
 constexpr uint8_t MOTOR_IN2_PIN = 14;
 constexpr uint8_t SERVO_SIGNAL_PIN = 12;
-constexpr uint8_t LIGHT_RED_PIN = 13;
+constexpr uint8_t LIGHT_RED_PIN = 16; // D0-equivalent label is board-specific
+constexpr uint8_t LIGHT_GREEN_PIN = 17; // D7-equivalent label is board-specific
 #endif
 
 // SERVOMY SDS2601-26G: power red from a stable 5-8.4 V source and connect
@@ -81,8 +84,8 @@ constexpr uint32_t SERVO_CLOSED_HOLD_MS = 2000;
 constexpr uint16_t PWM_MAX = 1023;
 constexpr uint16_t PWM_FREQUENCY_HZ = 1000;
 
-// The red LED strobes while a non-zero PWM value is actually applied to the
-// motor. 125 ms per half-cycle gives four complete flashes per second.
+// Green is on while stopped. During non-zero PWM, green turns off and red
+// strobes. 125 ms per half-cycle gives four complete flashes per second.
 constexpr uint32_t LIGHT_STROBE_HALF_PERIOD_MS = 125;
 
 constexpr uint8_t SPEED_MIN_PERCENT = 1;
@@ -146,7 +149,7 @@ constexpr int16_t RAMP_STEP = 24;
 
 constexpr bool safeOutputPin(uint8_t pin) {
 #if defined(PINOUT_ESP32_S3)
-  return pin == 4 || pin == 5 || pin == 6 || pin == 7 || pin == 15 || pin == 16;
+  return pin == 4 || pin == 5 || pin == 6 || pin == 7 || pin == 15 || pin == 16 || pin == 17;
 #else
   return pin == 4 || pin == 5 || pin == 12 || pin == 13 || pin == 14 || pin == 16;
 #endif
@@ -168,7 +171,10 @@ static_assert(SPEED_MIN_PERCENT >= 1 && SPEED_MAX_PERCENT <= 100 &&
               SPEED_DEFAULT_PERCENT >= SPEED_MIN_PERCENT &&
               SPEED_DEFAULT_PERCENT <= SPEED_MAX_PERCENT, "Invalid speed range");
 
-static_assert(safeOutputPin(LIGHT_RED_PIN) &&
+static_assert(safeOutputPin(LIGHT_RED_PIN) && safeOutputPin(LIGHT_GREEN_PIN) &&
               LIGHT_RED_PIN != MOTOR_ENA_PIN && LIGHT_RED_PIN != MOTOR_IN1_PIN &&
-              LIGHT_RED_PIN != MOTOR_IN2_PIN && LIGHT_RED_PIN != SERVO_SIGNAL_PIN,
+              LIGHT_RED_PIN != MOTOR_IN2_PIN && LIGHT_RED_PIN != SERVO_SIGNAL_PIN &&
+              LIGHT_GREEN_PIN != MOTOR_ENA_PIN && LIGHT_GREEN_PIN != MOTOR_IN1_PIN &&
+              LIGHT_GREEN_PIN != MOTOR_IN2_PIN && LIGHT_GREEN_PIN != SERVO_SIGNAL_PIN &&
+              LIGHT_GREEN_PIN != LIGHT_RED_PIN,
               "LED pin must not overlap motor/servo");
