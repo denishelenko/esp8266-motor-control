@@ -450,7 +450,7 @@ void setup() {
   printBootInfo();
   Serial.println("[START] Standalone: motor + servo + RGB status (green idle / red strobe while moving)");
   motorHardwareReady = localMotor.begin();
-  if (!motorHardwareReady) Serial.println("[ERROR] Motor PWM init failed; motion disabled");
+  if (!motorHardwareReady) Serial.println("[ERROR] Motor output init failed; motion disabled");
   digitalWrite(SERVO_SIGNAL_PIN, LOW); pinMode(SERVO_SIGNAL_PIN, OUTPUT);
   // No servo pulse/movement until the user starts a program.
   Serial.println(PINOUT_SERIAL_TEXT);

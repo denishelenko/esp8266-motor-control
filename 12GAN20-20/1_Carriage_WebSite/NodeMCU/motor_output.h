@@ -4,11 +4,11 @@
 #include "platform_hal.h"
 
 // Same output logic for local, ESP-NOW, dual-bridge and calibration firmware.
-// Zero means immediate ENA off (coast, not an electrical/mechanical brake).
+// L298N ENA is permanently enabled by its jumper. PWM is applied to the
+// currently active direction input; zero drives both inputs low (coast).
 class MotorOutput {
  public:
   bool begin() {
-    digitalWrite(MOTOR_ENA_PIN, LOW); pinMode(MOTOR_ENA_PIN, OUTPUT);
     digitalWrite(MOTOR_IN1_PIN, LOW); pinMode(MOTOR_IN1_PIN, OUTPUT);
     digitalWrite(MOTOR_IN2_PIN, LOW); pinMode(MOTOR_IN2_PIN, OUTPUT);
     ready_ = motorPwmBegin();
@@ -46,13 +46,18 @@ class MotorOutput {
     if (!ready_) return;
     const int8_t direction = pwm > 0 ? 1 : pwm < 0 ? -1 : 0;
     if (!pwm || (written_ > 0) != (pwm > 0)) {
-      // Disable the bridge BEFORE touching direction inputs.
-      motorPwmWrite(0);
+      // Disable both bridge inputs BEFORE changing direction.
+      motorPwmWrite(MOTOR_IN1_PIN, 0);
+      motorPwmWrite(MOTOR_IN2_PIN, 0);
     }
-    digitalWrite(MOTOR_IN1_PIN, pwm > 0 ? HIGH : LOW);
-    digitalWrite(MOTOR_IN2_PIN, pwm < 0 ? HIGH : LOW);
     if (pwm) {
-      motorPwmWrite(abs(pwm));
+      if (pwm > 0) {
+        motorPwmWrite(MOTOR_IN2_PIN, 0);
+        motorPwmWrite(MOTOR_IN1_PIN, abs(pwm));
+      } else {
+        motorPwmWrite(MOTOR_IN1_PIN, 0);
+        motorPwmWrite(MOTOR_IN2_PIN, abs(pwm));
+      }
       lastDirection_ = direction;
     } else if (written_) {
       stoppedAt_ = millis();

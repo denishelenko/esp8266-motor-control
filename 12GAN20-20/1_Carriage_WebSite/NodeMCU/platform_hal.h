@@ -28,10 +28,12 @@ inline void printBootInfo() {
     static_cast<unsigned long>(ESP.getPsramSize()));
 }
 inline bool motorPwmBegin() {
-  // Different frequency/resolution from servo: separate LEDC timer.
-  return ledcAttachChannel(MOTOR_ENA_PIN, PWM_FREQUENCY_HZ, 10, 0);
+  // ENA is permanently enabled by the L298N jumper. PWM is applied to the
+  // active direction input instead, so no dedicated ENA GPIO is required.
+  return ledcAttachChannel(MOTOR_IN1_PIN, PWM_FREQUENCY_HZ, 10, 0) &&
+         ledcAttachChannel(MOTOR_IN2_PIN, PWM_FREQUENCY_HZ, 10, 1);
 }
-inline void motorPwmWrite(uint16_t duty) { ledcWrite(MOTOR_ENA_PIN, duty); }
+inline void motorPwmWrite(uint8_t pin, uint16_t duty) { ledcWrite(pin, duty); }
 inline bool &servoAttached() { static bool attached = false; return attached; }
 inline bool servoPulse(uint32_t pulseUs) {
   if (!servoAttached()) {
@@ -65,9 +67,11 @@ inline void printBootInfo() {
     ESP.getResetReason().c_str(), ESP.getFreeHeap(), ESP.getFlashChipRealSize());
 }
 inline bool motorPwmBegin() {
-  analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ); return true;
+  analogWriteRange(PWM_MAX); analogWriteFreq(PWM_FREQUENCY_HZ);
+  pinMode(MOTOR_IN1_PIN, OUTPUT); pinMode(MOTOR_IN2_PIN, OUTPUT);
+  return true;
 }
-inline void motorPwmWrite(uint16_t duty) { analogWrite(MOTOR_ENA_PIN, duty); }
+inline void motorPwmWrite(uint8_t pin, uint16_t duty) { analogWrite(pin, duty); }
 inline Servo &siteServo() { static Servo servo; return servo; }
 inline bool servoWriteAngle(uint8_t angle) {
   Servo &servo = siteServo();
