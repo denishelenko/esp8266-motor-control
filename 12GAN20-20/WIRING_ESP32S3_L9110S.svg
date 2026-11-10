@@ -8,7 +8,7 @@
 
   <rect x="55" y="95" width="1490" height="135" class="power"/>
   <text x="80" y="125" class="h">Живлення від батареї 2S Li‑Po</text>
-  <text x="80" y="153" class="t">Батарея: приблизно 7,8–8,4 V</text>
+  <text x="80" y="153" class="t">Батарея: приблизно 7,8–8,4 V; два DC-DC підключаються паралельно</text>
   <rect x="345" y="116" width="235" height="82" class="box"/>
   <text x="462" y="147" text-anchor="middle" class="h">MOTOR RAIL ≤ 6 V</text>
   <text x="462" y="174" text-anchor="middle" class="small">для L9110S; 12 V потребує іншого драйвера</text>
@@ -18,7 +18,7 @@
   <rect x="1055" y="116" width="430" height="82" class="warn"/>
   <text x="1075" y="146" class="h">Увага</text>
   <text x="1075" y="171" class="small">MP1584 — понижувач; L9110S не живити від 12 V.</text>
-  <path d="M230 160H345M580 160H700" class="pwr"/>
+  <path d="M230 160H300V145H345M230 160H650V170H700" class="pwr"/>
 
   <text x="400" y="270" text-anchor="middle" class="title">Каретка 1 — головна ESP32-S3</text>
   <text x="1200" y="270" text-anchor="middle" class="title">Каретка 2 — друга ESP32-S3</text>
