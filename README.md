@@ -9,8 +9,8 @@
     ESP32S3/
     Wemos/
   2_Carriages_WebSite/
-    ESP32_Controller_Carriage_1/
-    NodeMCU_Carriage_2/
+    ESP32S3_Controller_Carriage_1/
+    ESP32S3_Carriage_2/
   web-interface-demo.html
   web-interface-two-carriages-demo.html
 ```
@@ -25,12 +25,14 @@
 
 Для двох кареток:
 
-- `2_Carriages_WebSite/ESP32_Controller_Carriage_1/ESP32_Controller_Carriage_1.ino` — ESP32 із сайтом і керуванням першою кареткою;
-- `2_Carriages_WebSite/NodeMCU_Carriage_2/NodeMCU_Carriage_2.ino` — NodeMCU другої каретки.
+- `2_Carriages_WebSite/ESP32S3_Controller_Carriage_1/ESP32S3_Controller_Carriage_1.ino` — ESP32-S3 із сайтом і керуванням першою кареткою;
+- `2_Carriages_WebSite/ESP32S3_Carriage_2/ESP32S3_Carriage_2.ino` — ESP32-S3 другої каретки.
 
 Локальні HTML-файли — це лише візуальні демо для браузера, вони не керують реальною платою.
 
 Wi-Fi для актуальних скетчів: `Motor-Control`, пароль `motor8266`, адреса `http://192.168.4.1`.
+
+Для двох кареток використовуються L9110S без окремого ENA: PWM подається на IA/IB. Піни ESP32-S3 і порядок живлення дивіться у [візуальній схемі L9110S](12GAN20-20/WIRING_ESP32S3_L9110S.svg).
 
 Робоча площа троса: 16 м, орієнтовний діапазон від центру `−8…+8 м`. Власні вимірювання швидкості потрібно внести у `config.h` відповідного скетчу.
 

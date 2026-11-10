@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <rect width="1600" height="1100" fill="#f1f2ee"/>
+  <style>
+    .title{font:700 30px Arial;fill:#1a1f1b}.h{font:700 20px Arial;fill:#1a1f1b}.t{font:16px Arial;fill:#1a1f1b}.small{font:14px Arial;fill:#303630}.box{fill:#fff;stroke:#2f3a33;stroke-width:2;rx:14}.board{fill:#26352d;stroke:#111;stroke-width:3;rx:18}.driver{fill:#d7e1d2;stroke:#34443a;stroke-width:2;rx:14}.power{fill:#f5d99c;stroke:#936d22;stroke-width:2;rx:14}.warn{fill:#ffe1d8;stroke:#aa3d24;stroke-width:2;rx:14}.wire{fill:none;stroke:#58645c;stroke-width:3}.pwr{fill:none;stroke:#be6a20;stroke-width:4}.gnd{fill:none;stroke:#4c5550;stroke-width:4}.sig{fill:none;stroke:#3c6eaa;stroke-width:3}.net{fill:none;stroke:#8b4b9b;stroke-width:3;stroke-dasharray:9 7}.label{font:700 14px Arial;fill:#fff}
+  </style>
+  <text x="800" y="44" text-anchor="middle" class="title">Дві ESP32-S3 + L9110S — схема живлення та керування</text>
+  <text x="800" y="72" text-anchor="middle" class="small">Головна плата створює Motor-Control, друга підключається до неї через UDP/Wi‑Fi</text>
+
+  <rect x="55" y="95" width="1490" height="135" class="power"/>
+  <text x="80" y="125" class="h">Живлення від батареї 2S Li‑Po</text>
+  <text x="80" y="153" class="t">Батарея: приблизно 7,8–8,4 V</text>
+  <rect x="345" y="116" width="235" height="82" class="box"/>
+  <text x="462" y="147" text-anchor="middle" class="h">MOTOR RAIL ≤ 6 V</text>
+  <text x="462" y="174" text-anchor="middle" class="small">для L9110S; 12 V потребує іншого драйвера</text>
+  <rect x="700" y="116" width="235" height="82" class="box"/>
+  <text x="817" y="147" text-anchor="middle" class="h">MP1584 → 5 V</text>
+  <text x="817" y="174" text-anchor="middle" class="small">понижувач для ESP32/серво</text>
+  <rect x="1055" y="116" width="430" height="82" class="warn"/>
+  <text x="1075" y="146" class="h">Увага</text>
+  <text x="1075" y="171" class="small">MP1584 — понижувач; L9110S не живити від 12 V.</text>
+  <path d="M230 160H345M580 160H700" class="pwr"/>
+
+  <text x="400" y="270" text-anchor="middle" class="title">Каретка 1 — головна ESP32-S3</text>
+  <text x="1200" y="270" text-anchor="middle" class="title">Каретка 2 — друга ESP32-S3</text>
+
+  <rect x="80" y="300" width="300" height="250" class="board"/>
+  <text x="230" y="338" text-anchor="middle" class="label">ESP32-S3 DevKitC-1</text>
+  <text x="105" y="378" class="label">GPIO6 → IA</text>
+  <text x="105" y="410" class="label">GPIO7 → IB</text>
+  <text x="105" y="442" class="label">GPIO15 → SERVO</text>
+  <text x="105" y="474" class="label">GPIO16 → R</text>
+  <text x="105" y="506" class="label">GPIO17 → G</text>
+  <text x="105" y="530" class="label">5V + GND</text>
+
+  <rect x="470" y="315" width="300" height="220" class="driver"/>
+  <text x="620" y="352" text-anchor="middle" class="h">L9110S</text>
+  <text x="495" y="386" class="t">IA / IB ← GPIO6 / GPIO7</text>
+  <text x="495" y="420" class="t">VCC ← моторне живлення</text>
+  <text x="495" y="454" class="t">GND ← спільна земля</text>
+  <text x="495" y="488" class="t">OA / OB → мотор(и)</text>
+
+  <rect x="850" y="300" width="300" height="250" class="board"/>
+  <text x="1000" y="338" text-anchor="middle" class="label">ESP32-S3 DevKitC-1</text>
+  <text x="875" y="378" class="label">GPIO6 → IA</text>
+  <text x="875" y="410" class="label">GPIO7 → IB</text>
+  <text x="875" y="442" class="label">GPIO15 → SERVO</text>
+  <text x="875" y="474" class="label">GPIO16 → R</text>
+  <text x="875" y="506" class="label">GPIO17 → G</text>
+  <text x="875" y="530" class="label">5V + GND</text>
+
+  <rect x="1240" y="315" width="300" height="220" class="driver"/>
+  <text x="1390" y="352" text-anchor="middle" class="h">L9110S</text>
+  <text x="1265" y="386" class="t">IA / IB ← GPIO6 / GPIO7</text>
+  <text x="1265" y="420" class="t">VCC ← моторне живлення</text>
+  <text x="1265" y="454" class="t">GND ← спільна земля</text>
+  <text x="1265" y="488" class="t">OA / OB → мотор(и)</text>
+
+  <path d="M380 390H470M380 422H470M1150 390H1240M1150 422H1240" class="sig"/>
+  <path d="M380 530H470M1150 530H1240" class="gnd"/>
+  <path d="M580 160V315M1360 160V315" class="pwr"/>
+  <path d="M817 198V280H230V300M817 198V280H1000V300" class="pwr"/>
+
+  <rect x="455" y="590" width="310" height="100" class="box"/>
+  <text x="610" y="625" text-anchor="middle" class="h">Мотори каретки 1</text>
+  <text x="610" y="654" text-anchor="middle" class="t">обидва паралельно до OA/OB</text>
+  <text x="610" y="678" text-anchor="middle" class="small">лише після перевірки струму драйвера</text>
+  <rect x="1230" y="590" width="310" height="100" class="box"/>
+  <text x="1385" y="625" text-anchor="middle" class="h">Мотори каретки 2</text>
+  <text x="1385" y="654" text-anchor="middle" class="t">обидва паралельно до OA/OB</text>
+  <text x="1385" y="678" text-anchor="middle" class="small">лише після перевірки струму драйвера</text>
+  <path d="M620 535V590M1390 535V590" class="wire"/>
+
+  <rect x="80" y="735" width="300" height="120" class="box"/>
+  <text x="230" y="770" text-anchor="middle" class="h">Сервопривід 1</text>
+  <text x="105" y="801" class="t">жовтий ← GPIO15 через level shifter</text>
+  <text x="105" y="828" class="t">червоний ← стабільні 5 V</text>
+  <text x="105" y="850" class="t">коричневий ← GND</text>
+  <rect x="850" y="735" width="300" height="120" class="box"/>
+  <text x="1000" y="770" text-anchor="middle" class="h">Сервопривід 2</text>
+  <text x="875" y="801" class="t">жовтий ← GPIO15 через level shifter</text>
+  <text x="875" y="828" class="t">червоний ← стабільні 5 V</text>
+  <text x="875" y="850" class="t">коричневий ← GND</text>
+  <path d="M290 550V735M1060 550V735" class="sig"/>
+  <path d="M330 198V730M1100 198V730" class="pwr"/>
+  <path d="M230 550V900M1000 550V900" class="gnd"/>
+
+  <rect x="455" y="735" width="310" height="120" class="box"/>
+  <text x="610" y="770" text-anchor="middle" class="h">RGB 1</text>
+  <text x="495" y="802" class="t">R ← GPIO16 через резистор</text>
+  <text x="495" y="830" class="t">G ← GPIO17 через резистор</text>
+  <text x="495" y="852" class="t">спільний мінус → GND</text>
+  <rect x="1230" y="735" width="310" height="120" class="box"/>
+  <text x="1385" y="770" text-anchor="middle" class="h">RGB 2</text>
+  <text x="1270" y="802" class="t">R ← GPIO16 через резистор</text>
+  <text x="1270" y="830" class="t">G ← GPIO17 через резистор</text>
+  <text x="1270" y="852" class="t">спільний мінус → GND</text>
+
+  <path d="M300 500L455 790M300 520L455 820M1070 500L1230 790M1070 520L1230 820" class="sig"/>
+
+  <rect x="500" y="930" width="600" height="105" class="box"/>
+  <text x="800" y="965" text-anchor="middle" class="h">Зв'язок</text>
+  <text x="800" y="993" text-anchor="middle" class="t">Каретка 1: Wi‑Fi AP Motor-Control + сайт + UDP-команди</text>
+  <text x="800" y="1018" text-anchor="middle" class="t">Каретка 2: Wi‑Fi STA → головна ESP32-S3, підтвердження кожної команди</text>
+  <path d="M380 330C560 230 1040 230 1240 330" class="net"/>
+  <text x="800" y="245" text-anchor="middle" class="small">UDP / Wi‑Fi, 50 мс команди, статус і ACK</text>
+</svg>
