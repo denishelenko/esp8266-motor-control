@@ -1,45 +1,45 @@
 # 12GAN20-20 — система керування каретками
 
-Усі актуальні Arduino IDE-скетчі та локальні демо знаходяться в папці [12GAN20-20](12GAN20-20).
+Проєкт для Arduino IDE та VS Code + PlatformIO знаходиться у [12GAN20-20](12GAN20-20).
 
 ```text
 12GAN20-20/
-  1_Carriage_WebSite/
-    NodeMCU/
-    ESP32S3/
-    Wemos/
-  2_Carriages_WebSite/
-    ESP32S3_Controller_Carriage_1/
-    ESP32S3_Carriage_2/
+  Arduino IDE/
+    1_Carriage_WebSite/
+      NodeMCU/
+      Wemos/
+      ESP32S3/
+    2_Carriages_WebSite/
+      ESP32S3_Controller_Carriage_1/
+      ESP32S3_Carriage_2/
+  PlatformIO/
+    platformio.ini
   web-interface-demo.html
   web-interface-two-carriages-demo.html
 ```
 
 ## Який скетч прошивати
 
-Для однієї каретки із сайтом оберіть одну з трьох платформ у `1_Carriage_WebSite`:
+В Arduino IDE відкрийте відповідний `.ino` з [Arduino IDE](<12GAN20-20/Arduino IDE>). У VS Code відкрийте [PlatformIO](12GAN20-20/PlatformIO) як папку проєкту. Обидва середовища використовують спільні вихідні файли в `Arduino IDE`.
 
-- `NodeMCU/NodeMCU.ino` — NodeMCU v3;
-- `ESP32S3/ESP32S3.ino` — ESP32-S3;
-- `Wemos/Wemos.ino` — Wemos D1 mini Pro.
-
-Для двох кареток:
-
-- `2_Carriages_WebSite/ESP32S3_Controller_Carriage_1/ESP32S3_Controller_Carriage_1.ino` — ESP32-S3 із сайтом і керуванням першою кареткою;
-- `2_Carriages_WebSite/ESP32S3_Carriage_2/ESP32S3_Carriage_2.ino` — ESP32-S3 другої каретки.
+| Збірка | Скетч Arduino IDE | Профіль PlatformIO |
+| --- | --- | --- |
+| Одна каретка, NodeMCU v3 | `1_Carriage_WebSite/NodeMCU/NodeMCU.ino` | `single_nodemcu` |
+| Одна каретка, Wemos D1 mini Pro | `1_Carriage_WebSite/Wemos/Wemos.ino` | `single_d1_mini_pro` |
+| Одна каретка, ESP32-S3 | `1_Carriage_WebSite/ESP32S3/ESP32S3.ino` | `single_esp32s3` |
+| Дві каретки, головна ESP32-S3 із сайтом | `2_Carriages_WebSite/ESP32S3_Controller_Carriage_1/ESP32S3_Controller_Carriage_1.ino` | `dual_esp32s3_controller` |
+| Дві каретки, віддалена ESP32-S3 | `2_Carriages_WebSite/ESP32S3_Carriage_2/ESP32S3_Carriage_2.ino` | `dual_esp32s3_remote` |
 
 Локальні HTML-файли — це лише візуальні демо для браузера, вони не керують реальною платою.
 
 Wi-Fi для актуальних скетчів: `Motor-Control`, пароль `motor8266`, адреса `http://192.168.4.1`.
 
-Для двох кареток використовуються L9110S без окремого ENA: PWM подається на IA/IB. Піни ESP32-S3 і порядок живлення дивіться у [візуальній схемі L9110S](12GAN20-20/WIRING_ESP32S3_L9110S.svg).
+У парі двох ESP32-S3 телефон підключається до Wi-Fi головної плати. Плати обмінюються командами й статусом через ESP-NOW. Підключення моторів та інструкція тестування наведені в [README_TWO_CARRIAGES.md](12GAN20-20/README_TWO_CARRIAGES.md).
 
 Робоча площа троса: 16 м, орієнтовний діапазон від центру `−8…+8 м`. Власні вимірювання швидкості потрібно внести у `config.h` відповідного скетчу.
 
-Для початкового вимірювання часу відкрийте на сайті «Ручне калібрування». Кнопки `1 с`, `2 с`, `3 с`, `4 с` запускають автоматичну зупинку після вибраного часу. Реальну відстань виміряйте рулеткою та внесіть окремо для вправо/вліво у `TIME_CALIBRATION` відповідного `config.h`.
+В автономному скетчі тести на 1–4 секунди знаходяться в розділі «Ручне калібрування». Виміряйте пройдену відстань рулеткою для кожного напрямку.
 
 Для підключення однокареткової прошивки до домашнього Wi‑Fi використовуйте профіль [Home dev internet](12GAN20-20/Home%20dev%20internet). За наявності локального `home_wifi.local.h` плата працює в режимі `AP + STA`: сайт доступний і через `Motor-Control`, і через домашню мережу.
 
-Логіка програм: «Маятник» їде від −8 до +8 м; «Драбинка» зупиняється на −2, +2, −4, +4, −6, +6, −8, +8 м; «Ривки» роблять хаотичні переміщення на 1–3 м з максимальною потужністю; «Рандом» вибирає довші випадкові переходи приблизно від 4 м.
-
-Детальні схеми: [README_STANDALONE_LED.md](12GAN20-20/README_STANDALONE_LED.md) і [README_TWO_CARRIAGES.md](12GAN20-20/README_TWO_CARRIAGES.md).
+Додаткові інструкції для [PlatformIO](12GAN20-20/PlatformIO/README.md) та [однієї каретки](12GAN20-20/README_STANDALONE_LED.md).
