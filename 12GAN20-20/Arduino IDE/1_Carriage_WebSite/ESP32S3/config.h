@@ -16,13 +16,13 @@ constexpr uint16_t HTTP_PORT = 80;
 constexpr uint16_t WEBSOCKET_PORT = 81;
 
 // One motor per bridge. Fan out each direction signal to both logic inputs.
-constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] 6=IN1 A+B, 7=IN2 A+B, 15=TXS A1, 16=RED, 17=GREEN";
-constexpr uint8_t MOTOR_IN1_PIN = 6;       // A1A and B1A
-constexpr uint8_t MOTOR_IN2_PIN = 7;       // A1B and B1B
+constexpr char PINOUT_SERIAL_TEXT[] = "[PINS] 1=IN1 A+B, 2=IN2 A+B, 42=TXS A1, 47=RED, 21=GREEN";
+constexpr uint8_t MOTOR_IN1_PIN = 1;       // A1A and B1A
+constexpr uint8_t MOTOR_IN2_PIN = 2;       // A1B and B1B
 constexpr bool MOTOR_DIRECTION_REVERSED = false;
-constexpr uint8_t SERVO_SIGNAL_PIN = 15;   // TXS0108E A1; B1 to servo signal
-constexpr uint8_t LIGHT_RED_PIN = 16;
-constexpr uint8_t LIGHT_GREEN_PIN = 17;
+constexpr uint8_t SERVO_SIGNAL_PIN = 42;   // TXS0108E A1; B1 to servo signal
+constexpr uint8_t LIGHT_RED_PIN = 47;
+constexpr uint8_t LIGHT_GREEN_PIN = 21;
 
 // SERVOMY SDS2601-26G: power red from the 5 V regulator and brown from common GND.
 // UI angles are the real, physical angles of this particular mechanism.
@@ -109,7 +109,7 @@ constexpr uint32_t RAMP_INTERVAL_MS = 10;
 constexpr int16_t RAMP_STEP = 24;
 
 constexpr bool safeOutputPin(uint8_t pin) {
-  return pin == 4 || pin == 5 || pin == 6 || pin == 7 || pin == 15 || pin == 16 || pin == 17;
+  return pin == 1 || pin == 2 || pin == 21 || pin == 42 || pin == 47;
 }
 static_assert(safeOutputPin(MOTOR_IN1_PIN) && safeOutputPin(MOTOR_IN2_PIN),
               "Use verified ESP32-S3 output pins");
