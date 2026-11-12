@@ -11,24 +11,7 @@
 #include "home_wifi_ota.h"
 #include "web_ui.h"
 
-enum class MotionMode : uint8_t { Idle, Target, Program, Jog };
-struct CarriageState {
-  float position = 0.0f;
-  float target = 0.0f;
-  uint8_t speed = 50;
-  uint8_t program = 1;
-  uint8_t servoAngle = SERVO_DEFAULT_ANGLE;
-  uint8_t servoPosition = 0;
-  bool servoEnabled = false;
-  uint32_t nextServoAt = 0;
-  int16_t outputPwm = 0;
-  MotionMode mode = MotionMode::Idle;
-  uint32_t lastTick = 0;
-  uint32_t programStep = 0;
-  uint32_t nextProgramAt = 0;
-  bool ladderRight = true;
-  uint32_t lastJogAt = 0;
-};
+#include "controller_state.h"
 
 WebServer httpServer(HTTP_PORT);
 WebSocketsServer wsServer(WEBSOCKET_PORT);
@@ -48,117 +31,15 @@ bool controllerReady = false;
 bool redOutputOn = false, lightStrobeActive = false;
 uint32_t lastLightToggleAt = 0;
 
-const char *modeName(MotionMode mode) {
-  switch (mode) {
-    case MotionMode::Target: return "ціль";
-    case MotionMode::Program: return "програма";
-    case MotionMode::Jog: return "ручний рух";
-    default: return "стоп";
-  }
-}
+#include "controller_hardware.h"
+#include "controller_estimator.h"
+#include "controller_motion.h"
 
 bool nodeSeenRecently() { return nodeKnown && millis() - nodeSeenAt < NODE_LINK_TIMEOUT_MS; }
 bool nodeOnline() {
   return nodeSeenRecently() && nodeAcked &&
          millis() - lastAckAt < NODE_ACK_TIMEOUT_MS &&
          commandSequence - lastAckSequence <= NODE_MAX_ACK_LAG_PACKETS;
-}
-
-void writeLocalMotor(int16_t pwm) {
-  pwm = constrain(pwm, -int16_t(PWM_MAX), int16_t(PWM_MAX));
-  if (MOTOR_DIRECTION_REVERSED) pwm = -pwm;
-  if (pwm > 0) {
-    ledcWrite(MOTOR_IN2_PIN, 0);
-    ledcWrite(MOTOR_IN1_PIN, pwm);
-  } else if (pwm < 0) {
-    ledcWrite(MOTOR_IN1_PIN, 0);
-    ledcWrite(MOTOR_IN2_PIN, -pwm);
-  } else {
-    ledcWrite(MOTOR_IN1_PIN, 0);
-    ledcWrite(MOTOR_IN2_PIN, 0);
-  }
-}
-
-void writeLights(bool redEnabled) {
-  if (redOutputOn != redEnabled) {
-    redOutputOn = redEnabled;
-    digitalWrite(LIGHT_RED_PIN, redEnabled ? HIGH : LOW);
-  }
-}
-
-void updateLights(uint32_t now) {
-  if (localAppliedPwm == 0) {
-    lightStrobeActive = false;
-    writeLights(false);
-    digitalWrite(LIGHT_GREEN_PIN, HIGH);
-    return;
-  }
-  digitalWrite(LIGHT_GREEN_PIN, LOW);
-  if (!lightStrobeActive) {
-    lightStrobeActive = true;
-    lastLightToggleAt = now;
-    writeLights(true);
-    return;
-  }
-  if (now - lastLightToggleAt >= LIGHT_BLINK_HALF_PERIOD_MS) {
-    lastLightToggleAt = now;
-    writeLights(!redOutputOn);
-  }
-}
-
-void updateLocalMotor() {
-  const uint32_t now = millis();
-  const int16_t targetPwm = carriages[0].outputPwm;
-  if (targetPwm == 0 && localAppliedPwm != 0) {
-    localAppliedPwm = 0;
-    lastLocalRampAt = now;
-    writeLocalMotor(0);
-    return;
-  }
-  if (localAppliedPwm == targetPwm) return;
-  if (now - lastLocalRampAt < RAMP_INTERVAL_MS) return;
-  lastLocalRampAt = now;
-  if ((localAppliedPwm > 0 && targetPwm < 0) || (localAppliedPwm < 0 && targetPwm > 0)) {
-    localAppliedPwm = 0;
-  } else if (localAppliedPwm < targetPwm) {
-    localAppliedPwm += RAMP_STEP;
-    if (localAppliedPwm > targetPwm) localAppliedPwm = targetPwm;
-  } else if (localAppliedPwm > targetPwm) {
-    localAppliedPwm -= RAMP_STEP;
-    if (localAppliedPwm < targetPwm) localAppliedPwm = targetPwm;
-  }
-  writeLocalMotor(localAppliedPwm);
-}
-
-void writeLocalServo(uint8_t physicalAngle) {
-  const uint8_t commandAngle = constrain(uint16_t(physicalAngle) * 2, uint16_t(0), uint16_t(180));
-  const uint16_t pulseUs = SERVO_MIN_PULSE_US +
-      (uint32_t(SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US) * commandAngle) / 180;
-  const uint32_t duty = (uint64_t(pulseUs) * SERVO_FREQUENCY_HZ * 16384ULL + 500000ULL) / 1000000ULL;
-  ledcWrite(SERVO_SIGNAL_PIN, duty);
-}
-
-void closeServo(CarriageState &c) {
-  c.servoPosition = 0;
-  c.nextServoAt = 0;
-  c.servoEnabled = false;
-}
-
-void selectNextProgramTarget(uint8_t index);
-
-void startProgram(uint8_t index) {
-  CarriageState &c = carriages[index];
-  if (c.program < 1 || c.program > 4) c.program = 1;
-  c.programStep = 0;
-  c.nextProgramAt = 0;
-  c.ladderRight = true;
-  c.mode = MotionMode::Program;
-  if (!c.servoEnabled) {
-    c.servoEnabled = true;
-    c.servoPosition = 0;
-    c.nextServoAt = millis() + SERVO_CLOSED_HOLD_MS;
-  }
-  selectNextProgramTarget(index);
 }
 
 void sendRemoteCommand() {
@@ -212,119 +93,6 @@ void receiveNodePacket() {
   }
 }
 
-void setCarriageTarget(uint8_t index, float target, uint8_t speed) {
-  CarriageState &c = carriages[index];
-  c.target = constrain(target, -TRACK_LIMIT_M, TRACK_LIMIT_M);
-  c.speed = constrain(speed, uint8_t(1), uint8_t(100));
-  closeServo(c);
-  c.mode = MotionMode::Target;
-}
-
-void stopCarriage(uint8_t index, bool keepServo = false) {
-  CarriageState &c = carriages[index];
-  c.target = c.position;
-  c.outputPwm = 0;
-  if (!keepServo) closeServo(c);
-  c.mode = MotionMode::Idle;
-}
-
-template <typename Action>
-void applyToSelected(uint8_t selected, Action action) {
-  action(selected);
-  if (carriagesLinked) action(selected == 0 ? 1 : 0);
-}
-
-void selectNextProgramTarget(uint8_t index) {
-  CarriageState &c = carriages[index];
-  const float l = TRACK_LIMIT_M;
-  const uint32_t step = c.programStep++;
-  switch (c.program) {
-    case 1: c.target = (step & 1) ? -l : l; break; // маятник: край до краю
-    case 2: { // драбинка: сусідня позначка через 2 м, зі зміною напрямку на краю
-      if (c.position >= l - POSITION_TOLERANCE_M) c.ladderRight = false;
-      if (c.position <= -l + POSITION_TOLERANCE_M) c.ladderRight = true;
-      constexpr float spacing = 2.0f;
-      const float nextMark = c.ladderRight
-          ? floorf((c.position + POSITION_TOLERANCE_M) / spacing) + 1.0f
-          : ceilf((c.position - POSITION_TOLERANCE_M) / spacing) - 1.0f;
-      c.target = constrain(nextMark * spacing, -l, l);
-      break;
-    }
-    case 3: { // ривки: короткі хаотичні стрибки на 1–3 м
-      const float jump = 1.0f + float(random(0, 21)) / 10.0f;
-      int direction = random(0, 2) ? 1 : -1;
-      float candidate = c.position + direction * jump;
-      if (candidate > l || candidate < -l) {
-        direction = -direction;
-        candidate = c.position + direction * jump;
-      }
-      c.target = constrain(candidate, -l, l);
-      break;
-    }
-    default: { // рандом: довгі переходи, орієнтовно не менше 4 м
-      const float distance = 4.0f + float(random(0, 31)) / 10.0f;
-      int direction = random(0, 2) ? 1 : -1;
-      float candidate = c.position + direction * distance;
-      if (candidate > l || candidate < -l) {
-        direction = -direction;
-        candidate = c.position + direction * distance;
-      }
-      c.target = constrain(candidate, -l, l);
-      break;
-    }
-  }
-  c.mode = MotionMode::Program;
-}
-
-float estimatedSpeedMps(uint8_t index, bool right, uint8_t speedPercent) {
-  const float measuredTime = right ? TRAVEL_TIMES[index].right16mSeconds
-                                   : TRAVEL_TIMES[index].left16mSeconds;
-  if (measuredTime > 0.0f) {
-    const float measuredSpeed = (TRACK_LENGTH_M - 2.0f * SAFE_MARGIN_M) / measuredTime;
-    // PWM versus real speed is only approximated as linear between measurements.
-    return measuredSpeed * speedPercent / TRAVEL_CALIBRATION_SPEED_PERCENT;
-  }
-  return UNCALIBRATED_SPEED_AT_100_PERCENT_MPS * speedPercent / 100.0f;
-}
-
-void updateCarriage(uint8_t index) {
-  CarriageState &c = carriages[index];
-  const uint32_t now = millis();
-  if (!c.lastTick) c.lastTick = now;
-  const float dt = min(0.10f, (now - c.lastTick) / 1000.0f);
-  c.lastTick = now;
-
-  if (c.servoEnabled && c.nextServoAt && int32_t(now - c.nextServoAt) >= 0) {
-    c.servoPosition = c.servoPosition ? 0 : c.servoAngle;
-    c.nextServoAt = now + (c.servoPosition ? SERVO_OPEN_HOLD_MS : SERVO_CLOSED_HOLD_MS);
-  }
-
-  if (c.mode == MotionMode::Jog && now - c.lastJogAt >= JOG_TIMEOUT_MS) {
-    stopCarriage(index, true);
-  }
-  if (c.mode == MotionMode::Program && fabsf(c.target - c.position) <= POSITION_TOLERANCE_M) {
-    const uint32_t pauseMs = c.program == 1 ? 0 : c.program == 2 ? LADDER_PAUSE_MS
-                                             : c.program == 3 ? JERK_PAUSE_MS : RANDOM_PAUSE_MS;
-    if (pauseMs && !c.nextProgramAt) c.nextProgramAt = now + pauseMs;
-    if (!pauseMs || int32_t(now - c.nextProgramAt) >= 0) {
-      selectNextProgramTarget(index);
-      c.nextProgramAt = 0;
-    }
-  }
-  const float delta = c.target - c.position;
-  if (c.mode == MotionMode::Idle || fabsf(delta) <= POSITION_TOLERANCE_M) {
-    c.outputPwm = 0;
-    if (c.mode == MotionMode::Target) c.mode = MotionMode::Idle;
-    return;
-  }
-  const float direction = delta > 0 ? 1.0f : -1.0f;
-  const uint8_t motionSpeed = c.mode == MotionMode::Program && c.program == 3 ? 100 : c.speed;
-  const float speedMps = estimatedSpeedMps(index, direction > 0, motionSpeed);
-  const float next = c.position + direction * speedMps * dt;
-  c.position = direction > 0 ? min(next, c.target) : max(next, c.target);
-  c.outputPwm = int16_t(direction * map(motionSpeed, 0, 100, 0, PWM_MAX));
-}
-
 void broadcastState() {
   JsonDocument doc;
   doc["type"] = "state";
@@ -336,6 +104,11 @@ void broadcastState() {
     c["id"] = i + 1;
     c["position"] = carriages[i].position;
     c["target"] = carriages[i].target;
+    // Estimated remaining time; zero calibration uses the placeholder in config.h.
+    const uint8_t motionSpeed = carriages[i].mode == MotionMode::Program &&
+                                carriages[i].program == 3 ? 100 : carriages[i].speed;
+    c["estimatedTravelSeconds"] = estimatedTravelSeconds(
+        i, carriages[i].position, carriages[i].target, motionSpeed);
     c["speed"] = carriages[i].speed;
     c["program"] = carriages[i].program;
     c["servoAngle"] = carriages[i].servoAngle;

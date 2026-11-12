@@ -62,7 +62,7 @@
 ## Arduino IDE
 
 Бібліотеки для всіх трьох:
-- WebSockets by Markus Sattler, 2.3.6.
+- WebSockets by Markus Sattler, 2.7.2.
 - ArduinoJson by Benoit Blanchon, 7.4.3.
 
 Wi-Fi, вебсервер, DNS, mDNS та генератори PWM входять у пакет плати. Окрема бібліотека Servo/ESP32Servo не потрібна.
@@ -75,7 +75,7 @@ Wi-Fi, вебсервер, DNS, mDNS та генератори PWM входят�
 - URL: https://arduino.esp8266.com/stable/package_esp8266com_index.json
 
 Для 11:
-- Пакет esp32 by Espressif Systems **3.3.3** (код використовує LEDC API 3.x; не 2.x).
+- Пакет esp32 by Espressif Systems **3.3.12** (код використовує LEDC API 3.x; не 2.x).
 - URL: https://espressif.github.io/arduino-esp32/package_esp32_index.json
 - Board → **ESP32S3 Dev Module**.
 - Flash Size → **16MB (128Mb)**.
