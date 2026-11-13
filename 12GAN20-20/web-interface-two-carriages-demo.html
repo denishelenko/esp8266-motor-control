@@ -277,6 +277,7 @@ margin:-1px auto -3px}
 .manual button{min-height:55px}
 }
 
+.timedTest{margin-top:14px;padding:11px;border:1px solid var(--line);border-radius:12px}.timedTest p{margin:0 0 9px;color:var(--muted);font-size:.76rem;line-height:1.4}.timedTest .testRow{display:flex;gap:8px;margin:8px 0}.timedTest button{flex:1;min-height:42px;border:1px solid var(--mid);border-radius:10px;background:var(--ink);color:var(--paper);font-weight:750}.timedTest button.chosen{border-color:var(--paper);background:var(--mid)}.timedTest #testStatus{margin:9px 0 0}
 </style>
 </head>
 <body>
@@ -358,27 +359,28 @@ margin:-1px auto -3px}
 <button id="zero" class="zero">Позначити поточне місце як центр</button>
 <button id="right">Вправо</button>
 </div>
+<section class="timedTest"><p>Демо: виберіть каретку, напрямок і час. Реальну відстань у готовому пристрої вимірюють рулеткою.</p><div class="testRow"><button data-test-direction="left" class="chosen">← Вліво</button><button data-test-direction="right">Вправо →</button></div><div class="testRow"><button data-test-ms="1000">1 с</button><button data-test-ms="2000">2 с</button><button data-test-ms="5000">5 с</button></div><p id="testStatus" role="status">Швидкість — повзунком вище. СТОП перериває тест.</p></section>
 </details>
 </main>
 <script>
 const $=id=>document.getElementById(id),all=q=>[...document.querySelectorAll(q)];
-let selected=0,linked=false,drag=false,last=performance.now(),jog=0;
+let selected=0,linked=false,drag=false,last=performance.now(),jog=0,testDirection=-1;
 const carriageScroller=document.querySelector(".carriages");
 function fitCarriages(){const width=carriageScroller.clientWidth;if(!width)return;const gap=10,minCard=150,capacity=Math.max(2,Math.floor((width+gap)/(minCard+gap))),visible=Math.min(carriageScroller.children.length,capacity),cardWidth=Math.floor((width-gap*(visible-1))/visible);carriageScroller.style.gridAutoColumns=`${cardWidth}px`}
 if("ResizeObserver" in window)new ResizeObserver(fitCarriages).observe(carriageScroller);else window.addEventListener("resize",fitCarriages,{passive:true});
 new MutationObserver(fitCarriages).observe(carriageScroller,{childList:true});
 fitCarriages();
 const demoNodeOnline=!(typeof location!=="undefined"&&/node=offline/.test(location.search));
-const c=Array.from({length:2},(_,i)=>({p:0,t:0,s:50,prog:1,mode:"stop",angle:45,servo:0,visualServo:0,servoEnabled:false,nextServo:0,step:0,level:i===0?2:4}));
+const c=Array.from({length:2},(_,i)=>({p:0,t:0,s:50,prog:1,mode:"stop",angle:45,servo:0,visualServo:0,servoEnabled:false,nextServo:0,step:0,level:i===0?2:4,testUntil:0}));
 if(!demoNodeOnline){$("link").classList.add("offline");$("link").title="Немає сигналу другої каретки";$("link").setAttribute("aria-label",$("link").title);$("status").textContent="Сайт онлайн";$("state2").className="state off level-0";$("state2").querySelector(".stateLabel").textContent="офлайн"}
 const pct=v=>((v+8)/16*100)+"%";
 function affected(fn){fn(c[selected]);if(linked)fn(c[selected?0:1])}
 function close(x){x.servo=0;x.nextServo=0;x.servoEnabled=false}
-function stop(x,keepServo=false){x.t=x.p;x.mode="stop";if(!keepServo)close(x)}
+function stop(x,keepServo=false){x.t=x.p;x.mode="stop";x.testUntil=0;if(!keepServo)close(x)}
 function nextTarget(x){let n=x.step++;if(x.prog===1)x.t=n%2?-8:8;else if(x.prog===2)x.t=[-2,2,-4,4,-6,6,-8,8][n%8];else if(x.prog===3){const d=1+Math.floor(Math.random()*3),dir=Math.random()<.5?-1:1;let target=x.p+dir*d;if(target>8||target<-8)target=x.p-dir*d;x.t=Math.max(-8,Math.min(8,target))}else{const d=4+Math.random()*3,dir=Math.random()<.5?-1:1;let target=x.p+dir*d;if(target>8||target<-8)target=x.p-dir*d;x.t=Math.max(-8,Math.min(8,target))}}
 function start(x){x.mode="program";x.step=0;if(!x.servoEnabled){x.servo=0;x.servoEnabled=true;x.nextServo=performance.now()+2000}nextTarget(x)}
 function redraw(){let x=c[selected];$("pos").textContent=x.p.toFixed(2);$("which").textContent="каретка "+(selected+1);$("ipsc").style.left=pct(x.p);$("targetDot").style.left=pct(x.t);if(!drag)$("target").value=x.t;$("speed").value=x.s;$("speedOut").textContent=x.s+"%";$("stop").textContent=x.mode==="stop"?"СТАРТ":"СТОП";let phase=x.visualServo<x.servo-1?"відкривається":x.visualServo>x.servo+1?"закривається":x.servo?"відкрито":"закрито";$("servoState").textContent=x.servoEnabled?phase+" · "+Math.round(x.visualServo)+"°":"вимкнено · 0°";all(".carriage").forEach(b=>{const carriage=c[+b.dataset.carriage-1];b.classList.toggle("active",+b.dataset.carriage===selected+1);b.classList.toggle("moving",(+b.dataset.carriage!==2||demoNodeOnline)&&carriage.mode!=="stop"&&Math.abs(carriage.t-carriage.p)>.015)});all("[data-program]").forEach(b=>b.classList.toggle("active",+b.dataset.program===x.prog));all("[data-servo]").forEach(b=>{b.classList.toggle("selected",+b.dataset.servo===x.angle);b.classList.toggle("active",+b.dataset.servo===x.angle&&x.servoEnabled)});$("servoOff").classList.toggle("active",!x.servoEnabled)}
-function tick(n){let dt=Math.min(.05,(n-last)/1000);last=n;if(!demoNodeOnline){stop(c[1]);if(linked)stop(c[0])}c.forEach(x=>{if(x.servoEnabled&&x.nextServo&&n>=x.nextServo){x.servo=x.servo?0:x.angle;x.nextServo=n+(x.servo?1000:2000)}if(x.mode==="program"&&Math.abs(x.t-x.p)<.03)nextTarget(x);let sd=x.servo-x.visualServo,servoStep=90*dt/.35;x.visualServo+=Math.sign(sd)*Math.min(Math.abs(sd),servoStep);if(x.mode!=="stop"){let d=x.t-x.p;if(Math.abs(d)>.01){const speed=x.prog===3?100:x.s;x.p+=Math.sign(d)*Math.min(Math.abs(d),.8*speed/100*dt)}else if(x.mode==="target")x.mode="stop"}});redraw();requestAnimationFrame(tick)}
+function tick(n){let dt=Math.min(.05,(n-last)/1000);last=n;if(!demoNodeOnline){stop(c[1]);if(linked)stop(c[0])}c.forEach(x=>{if(x.servoEnabled&&x.nextServo&&n>=x.nextServo){x.servo=x.servo?0:x.angle;x.nextServo=n+(x.servo?1000:2000)}if(x.mode==="program"&&Math.abs(x.t-x.p)<.03)nextTarget(x);let sd=x.servo-x.visualServo,servoStep=90*dt/.35;x.visualServo+=Math.sign(sd)*Math.min(Math.abs(sd),servoStep);if(x.mode==="test"&&n>=x.testUntil){stop(x);$("testStatus").textContent="Демо: тест завершено. Реальну відстань вимірюють рулеткою."}if(x.mode!=="stop"){let d=x.t-x.p;if(Math.abs(d)>.01){const speed=x.prog===3&&x.mode==="program"?100:x.s;x.p=Math.max(-8,Math.min(8,x.p+Math.sign(d)*Math.min(Math.abs(d),.8*speed/100*dt)))}else if(x.mode==="target")x.mode="stop"}});if(c[selected].mode==="test")$("testStatus").textContent="Демо: лишилося "+((c[selected].testUntil-n)/1000).toFixed(1)+" с";redraw();requestAnimationFrame(tick)}
 all(".carriage").forEach(b=>b.onclick=()=>{selected=+b.dataset.carriage-1;redraw()});
 let mouseDownX=0,mouseScrollLeft=0,mouseDragging=false,suppressCarriageClick=false;
 carriageScroller.addEventListener("pointerdown",e=>{if(e.pointerType!=="mouse"||e.button!==0)return;mouseDragging=true;suppressCarriageClick=false;mouseDownX=e.clientX;mouseScrollLeft=carriageScroller.scrollLeft});
@@ -402,6 +404,8 @@ function release(){clearInterval(jog);affected(stop);redraw()}
 $("left").onpointerdown=()=>hold(-1);$("right").onpointerdown=()=>hold(1);
 for(const id of ["left","right"]){$(id).onpointerup=release;$(id).onpointercancel=release}
 $("zero").onclick=()=>{affected(x=>{stop(x);x.p=x.t=0});redraw()};
+all("[data-test-direction]").forEach(b=>b.onclick=()=>{testDirection=b.dataset.testDirection==="right"?1:-1;all("[data-test-direction]").forEach(x=>x.classList.toggle("chosen",x===b))});
+all("[data-test-ms]").forEach(b=>b.onclick=()=>{if(selected===1&&!demoNodeOnline){$("testStatus").textContent="Друга каретка офлайн";return}linked=false;$("link").classList.remove("active");$("link").setAttribute("aria-pressed","false");c.forEach(x=>stop(x));const x=c[selected];x.mode="test";x.t=testDirection*8;x.testUntil=performance.now()+(+b.dataset.testMs);$("testStatus").textContent="Демо: тест запущено";redraw()});
 redraw();requestAnimationFrame(tick);
 </script>
 </body>

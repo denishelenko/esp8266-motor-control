@@ -1,7 +1,7 @@
 #pragma once
 
 // One carriage's estimated state; position is not sensor feedback.
-enum class MotionMode : uint8_t { Idle, Target, Program, Jog };
+enum class MotionMode : uint8_t { Idle, Target, Program, Jog, TimedTest };
 struct CarriageState {
   float position = 0.0f;
   float target = 0.0f;
@@ -18,4 +18,7 @@ struct CarriageState {
   uint32_t nextProgramAt = 0;
   bool ladderRight = true;
   uint32_t lastJogAt = 0;
+  uint32_t testStartedAt = 0;
+  uint32_t testDurationMs = 0;
+  int8_t testDirection = 0;
 };

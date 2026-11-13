@@ -120,6 +120,10 @@ void broadcastState() {
     c["online"] = i == 0 || nodeOnline();
     c["rssi"] = i == 0 ? -45 : nodeRssi;
     c["outputPwm"] = i == 0 ? localAppliedPwm : (nodeOnline() ? nodeAppliedPwm : 0);
+    c["testRemainingMs"] = carriages[i].mode == MotionMode::TimedTest
+        ? (millis() - carriages[i].testStartedAt < carriages[i].testDurationMs
+            ? carriages[i].testDurationMs - (millis() - carriages[i].testStartedAt) : 0)
+        : 0;
   }
   String message;
   serializeJson(doc, message);
@@ -137,6 +141,18 @@ void handleUiCommand(const uint8_t *payload, size_t length) {
   } else if (!strcmp(type, "speed")) {
     const uint8_t speed = constrain(doc["speed"] | 50, 1, 100);
     applyToSelected(selected, [&](uint8_t i) { carriages[i].speed = speed; });
+  } else if (!strcmp(type, "timed_test")) {
+    // Physical distance is measured by the user; the browser never supplies metres.
+    const char *direction = doc["direction"] | "";
+    const int8_t sign = !strcmp(direction, "right") ? 1 : !strcmp(direction, "left") ? -1 : 0;
+    const uint32_t durationMs = doc["durationMs"] | 0UL;
+    if (!sign || (durationMs != 1000 && durationMs != 2000 && durationMs != 5000)) return;
+    if (selected == 1 && !nodeOnline()) return;
+    const uint8_t speed = constrain(doc["speed"] | 50, 1, 100);
+    carriagesLinked = false;
+    stopCarriage(0);
+    stopCarriage(1);
+    startTimedTest(selected, sign, speed, durationMs);
   } else if (!strcmp(type, "target")) {
     const float target = doc["position"] | 0.0f;
     if (!isfinite(target)) return;

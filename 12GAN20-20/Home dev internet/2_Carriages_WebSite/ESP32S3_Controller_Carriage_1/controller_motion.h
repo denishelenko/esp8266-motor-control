@@ -7,6 +7,7 @@ const char *modeName(MotionMode mode) {
     case MotionMode::Target: return "ціль";
     case MotionMode::Program: return "програма";
     case MotionMode::Jog: return "ручний рух";
+    case MotionMode::TimedTest: return "тест часу";
     default: return "стоп";
   }
 }
@@ -48,6 +49,18 @@ void stopCarriage(uint8_t index, bool keepServo = false) {
   c.outputPwm = 0;
   if (!keepServo) closeServo(c);
   c.mode = MotionMode::Idle;
+}
+
+// A stopwatch test: no invented metres or position estimate can end the run.
+// The existing motor ramp and radio link watchdog remain active.
+void startTimedTest(uint8_t index, int8_t direction, uint8_t speed, uint32_t durationMs) {
+  stopCarriage(index);
+  CarriageState &c = carriages[index];
+  c.speed = speed;
+  c.testDirection = direction;
+  c.testDurationMs = durationMs;
+  c.testStartedAt = millis();
+  c.mode = MotionMode::TimedTest;
 }
 
 template <typename Action>
@@ -112,6 +125,14 @@ void updateCarriage(uint8_t index) {
 
   if (c.mode == MotionMode::Jog && now - c.lastJogAt >= JOG_TIMEOUT_MS) {
     stopCarriage(index, true);
+  }
+  if (c.mode == MotionMode::TimedTest) {
+    if (now - c.testStartedAt >= c.testDurationMs) {
+      stopCarriage(index);
+    } else {
+      c.outputPwm = int16_t(c.testDirection * map(c.speed, 0, 100, 0, PWM_MAX));
+    }
+    return;
   }
   if (c.mode == MotionMode::Program && fabsf(c.target - c.position) <= POSITION_TOLERANCE_M) {
     const uint32_t pauseMs = c.program == 1 ? 0 : c.program == 2 ? LADDER_PAUSE_MS
