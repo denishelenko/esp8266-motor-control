@@ -1,7 +1,8 @@
 #pragma once
+#include "functions/servo_sequencer.h"
 
 // One carriage's estimated state; position is not sensor feedback.
-enum class MotionMode : uint8_t { Idle, Target, Program, Jog };
+enum class MotionMode : uint8_t { Idle, Target, Program, Jog, Timed };
 struct CarriageState {
   float position = 0.0f;
   float target = 0.0f;
@@ -10,7 +11,8 @@ struct CarriageState {
   uint8_t servoAngle = SERVO_DEFAULT_ANGLE;
   uint8_t servoPosition = 0;
   bool servoEnabled = false;
-  uint32_t nextServoAt = 0;
+  LightMode lightMode = LightMode::Auto;
+  ServoSequencer servo;
   int16_t outputPwm = 0;
   MotionMode mode = MotionMode::Idle;
   uint32_t lastTick = 0;
@@ -18,4 +20,6 @@ struct CarriageState {
   uint32_t nextProgramAt = 0;
   bool ladderRight = true;
   uint32_t lastJogAt = 0;
+  uint32_t timedStartedAt = 0;
+  uint32_t timedDurationMs = 0;
 };

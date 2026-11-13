@@ -18,10 +18,14 @@ void writeLights(bool redEnabled) {
 }
 
 void updateLights(uint32_t now) {
-  if (appliedPwm == 0) {
+  appliedLightMode = targetLightMode;
+  LightMode mode = appliedLightMode;
+  if (mode == LightMode::Auto)
+    mode = appliedPwm == 0 ? LightMode::Green : LightMode::BlinkRed;
+  if (mode != LightMode::BlinkRed) {
     lightStrobeActive = false;
-    writeLights(false);
-    digitalWrite(LIGHT_GREEN_PIN, HIGH);
+    writeLights(mode == LightMode::Red);
+    digitalWrite(LIGHT_GREEN_PIN, mode == LightMode::Green ? HIGH : LOW);
     return;
   }
   digitalWrite(LIGHT_GREEN_PIN, LOW);

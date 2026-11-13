@@ -28,12 +28,14 @@ constexpr uint8_t SERVO_SIGNAL_PIN = 42;  // GPIO42 -> TXS0108E A1; B1 -> servo 
 constexpr uint8_t LIGHT_RED_PIN = 47;     // GPIO47 -> RGB R through resistor
 constexpr uint8_t LIGHT_GREEN_PIN = 21;   // GPIO21 -> RGB G through resistor
 constexpr uint8_t SERVO_DEFAULT_ANGLE = 45;  // Physical degrees; command is doubled.
+constexpr uint8_t SERVO_COMMAND_PER_PHYSICAL_DEGREE = 2;
 constexpr uint16_t SERVO_MIN_PULSE_US = 520;
 constexpr uint16_t SERVO_MAX_PULSE_US = 2520;
 constexpr uint16_t SERVO_FREQUENCY_HZ = 333;
-constexpr uint32_t SERVO_OPEN_HOLD_MS = 2500;
-constexpr uint32_t SERVO_CLOSED_HOLD_MS = 2500;
-constexpr uint16_t SERVO_TRAVEL_90_MS[2] = {350, 350};  // Visual estimates for carriages 1/2.
+// Measure the real 0->90 and 90->0 travel separately for each carriage.
+// These initial estimates also drive the browser animation.
+constexpr uint16_t SERVO_TRAVEL_90_MS[2] = {350, 350};
+constexpr uint16_t SERVO_RETURN_90_MS[2] = {350, 350};
 static_assert(SERVO_SIGNAL_PIN != MOTOR_IN1_PIN &&
               SERVO_SIGNAL_PIN != MOTOR_IN2_PIN &&
               LIGHT_RED_PIN != MOTOR_IN1_PIN && LIGHT_RED_PIN != MOTOR_IN2_PIN &&

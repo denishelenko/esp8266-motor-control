@@ -7,6 +7,7 @@
 #include <cstring>
 
 enum class PacketType : uint8_t { Hello = 1, Command = 2, Status = 3 };
+enum class LightMode : uint8_t { Auto = 0, Off = 1, Red = 2, Green = 3, BlinkRed = 4 };
 
 struct __attribute__((packed)) CarriagePacket {
   uint32_t group;
@@ -17,10 +18,11 @@ struct __attribute__((packed)) CarriagePacket {
   uint32_t sequence;
   int16_t pwm;
   uint8_t servoPosition;
+  LightMode lightMode;
 };
-static_assert(sizeof(CarriagePacket) == 18, "ESP-NOW packet layout");
+static_assert(sizeof(CarriagePacket) == 19, "ESP-NOW packet layout");
 
-constexpr uint8_t ESPNOW_PROTOCOL_VERSION = 1;
+constexpr uint8_t ESPNOW_PROTOCOL_VERSION = 2;
 constexpr uint8_t REMOTE_CARRIAGE_ID = 2;
 constexpr uint8_t BROADCAST_MAC[ESP_NOW_ETH_ALEN] = {255, 255, 255, 255, 255, 255};
 constexpr uint32_t MAX_FRAME_AGE_MS = 200;

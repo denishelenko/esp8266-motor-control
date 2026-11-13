@@ -11,6 +11,7 @@ CarriageRadio carriageRadio;
 HomeWifiOta homeWifi;
 int16_t targetPwm = 0, appliedPwm = 0;
 uint8_t targetServoPosition = 0, appliedServoPosition = 0;
+LightMode targetLightMode = LightMode::Auto, appliedLightMode = LightMode::Auto;
 uint32_t lastCommandAt = 0, lastStatusAt = 0, lastRampAt = 0;
 uint32_t controllerSession = 0, lastSequence = 0;
 uint8_t controllerMac[ESP_NOW_ETH_ALEN] = {};
@@ -18,7 +19,7 @@ bool controllerLinked = false, statusPending = false;
 bool redOutputOn = false, lightStrobeActive = false;
 uint32_t lastLightToggleAt = 0;
 
-#include "remote_hardware.h"
+#include "functions/remote_hardware.h"
 
 bool actuatorsReady = false;
 
@@ -28,7 +29,7 @@ void sendStatus() {
                            REMOTE_CARRIAGE_ID,
                            controllerLinked ? controllerSession : 0,
                            controllerLinked ? lastSequence : 0,
-                           appliedPwm, appliedServoPosition};
+                           appliedPwm, appliedServoPosition, appliedLightMode};
   carriageRadio.send(controllerLinked ? controllerMac : BROADCAST_MAC, packet);
 }
 
@@ -45,7 +46,8 @@ void receiveCommand() {
       memcmp(controllerMac, frame.source, ESP_NOW_ETH_ALEN) == 0;
   const bool sameSession = sameController && packet.session == controllerSession;
   if (controllerLinked && !sameController) return;
-  if ((!controllerLinked || !sameSession) && (packet.pwm != 0 || packet.servoPosition != 0)) return;
+  if ((!controllerLinked || !sameSession) &&
+      (packet.pwm != 0 || packet.servoPosition != 0 || packet.lightMode != LightMode::Off)) return;
   if (sameSession && int32_t(packet.sequence - lastSequence) <= 0) return;
 
   if (!sameController) {
@@ -57,8 +59,10 @@ void receiveCommand() {
   controllerSession = packet.session;
   lastSequence = packet.sequence;
   targetPwm = constrain(packet.pwm, -int16_t(PWM_MAX), int16_t(PWM_MAX));
-  targetServoPosition = (packet.servoPosition == 45 || packet.servoPosition == 90)
+  targetServoPosition = packet.servoPosition <= SERVO_PHYSICAL_MAX_ANGLE
       ? packet.servoPosition : 0;
+  targetLightMode = uint8_t(packet.lightMode) <= uint8_t(LightMode::BlinkRed)
+      ? packet.lightMode : LightMode::Off;
   lastCommandAt = frame.receivedAt;
   statusPending = true;
 }
@@ -67,6 +71,7 @@ void prepareForOta() {
   targetPwm = 0;
   appliedPwm = 0;
   targetServoPosition = 0;
+  targetLightMode = LightMode::Off;
   appliedServoPosition = 0;
   controllerLinked = false;
   writeMotor(0);
@@ -110,6 +115,7 @@ void loop() {
   if (homeWifi.connecting()) {
     targetPwm = 0;
     targetServoPosition = 0;
+    targetLightMode = LightMode::Off;
     appliedPwm = 0;
     writeMotor(0);
     writeServoAngle(0);
@@ -120,6 +126,7 @@ void loop() {
     controllerLinked = false;
     targetPwm = 0;
     targetServoPosition = 0;
+    targetLightMode = LightMode::Off;
     statusPending = true;
     Serial.println("[CARRIAGE 2] ESP-NOW timeout; motor stopped");
   }

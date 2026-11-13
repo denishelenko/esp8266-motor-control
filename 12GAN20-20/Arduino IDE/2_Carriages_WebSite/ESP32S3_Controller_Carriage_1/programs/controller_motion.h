@@ -1,4 +1,6 @@
 #pragma once
+#include "servo_programs.h"
+#include "../functions/motor_actions.h"
 
 // Time-based movement and position estimation; sensor feedback can replace the estimator.
 
@@ -7,13 +9,14 @@ const char *modeName(MotionMode mode) {
     case MotionMode::Target: return "ціль";
     case MotionMode::Program: return "програма";
     case MotionMode::Jog: return "ручний рух";
+    case MotionMode::Timed: return "рух за часом";
     default: return "стоп";
   }
 }
 
 void closeServo(CarriageState &c) {
+  c.servo.stop();
   c.servoPosition = 0;
-  c.nextServoAt = 0;
   c.servoEnabled = false;
 }
 
@@ -27,27 +30,23 @@ void startProgram(uint8_t index) {
   c.ladderRight = true;
   c.mode = MotionMode::Program;
   if (!c.servoEnabled) {
-    c.servoEnabled = true;
-    c.servoPosition = 0;
-    c.nextServoAt = millis() + SERVO_CLOSED_HOLD_MS;
+    startServoCycle(c, index, c.servoAngle,
+        DEFAULT_OPEN_HOLD_MS, DEFAULT_CLOSED_HOLD_MS, millis());
   }
   selectNextProgramTarget(index);
 }
 
 void setCarriageTarget(uint8_t index, float target, uint8_t speed) {
   CarriageState &c = carriages[index];
-  c.target = constrain(target, -TRACK_LIMIT_M, TRACK_LIMIT_M);
-  c.speed = constrain(speed, uint8_t(1), uint8_t(100));
+  if (!moveMotorTo(c, constrain(target, -TRACK_LIMIT_M, TRACK_LIMIT_M),
+                   constrain(speed, uint8_t(1), uint8_t(100)))) return;
   closeServo(c);
-  c.mode = MotionMode::Target;
 }
 
 void stopCarriage(uint8_t index, bool keepServo = false) {
   CarriageState &c = carriages[index];
-  c.target = c.position;
-  c.outputPwm = 0;
+  stopMotor(c);
   if (!keepServo) closeServo(c);
-  c.mode = MotionMode::Idle;
 }
 
 template <typename Action>
@@ -105,13 +104,14 @@ void updateCarriage(uint8_t index) {
   const float dt = min(0.10f, (now - c.lastTick) / 1000.0f);
   c.lastTick = now;
 
-  if (c.servoEnabled && c.nextServoAt && int32_t(now - c.nextServoAt) >= 0) {
-    c.servoPosition = c.servoPosition ? 0 : c.servoAngle;
-    c.nextServoAt = now + (c.servoPosition ? SERVO_OPEN_HOLD_MS : SERVO_CLOSED_HOLD_MS);
-  }
+  c.servo.tick(now);
+  if (c.servoEnabled) c.servoPosition = c.servo.commandAngle();
 
   if (c.mode == MotionMode::Jog && now - c.lastJogAt >= JOG_TIMEOUT_MS) {
     stopCarriage(index, true);
+  }
+  if (c.mode == MotionMode::Timed && now - c.timedStartedAt >= c.timedDurationMs) {
+    stopMotor(c);
   }
   if (c.mode == MotionMode::Program && fabsf(c.target - c.position) <= POSITION_TOLERANCE_M) {
     const uint32_t pauseMs = c.program == 1 ? 0 : c.program == 2 ? LADDER_PAUSE_MS
@@ -125,7 +125,7 @@ void updateCarriage(uint8_t index) {
   const float delta = c.target - c.position;
   if (c.mode == MotionMode::Idle || fabsf(delta) <= POSITION_TOLERANCE_M) {
     c.outputPwm = 0;
-    if (c.mode == MotionMode::Target) c.mode = MotionMode::Idle;
+    if (c.mode == MotionMode::Target || c.mode == MotionMode::Timed) stopMotor(c);
     return;
   }
   const float direction = delta > 0 ? 1.0f : -1.0f;

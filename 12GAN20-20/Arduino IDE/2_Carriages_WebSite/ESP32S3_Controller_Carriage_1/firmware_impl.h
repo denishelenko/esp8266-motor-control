@@ -23,15 +23,20 @@ uint32_t controllerSession = 0, lastAckSequence = 0, lastAckAt = 0, lastLocalRam
 bool nodeAcked = false;
 int8_t nodeRssi = -127;
 uint8_t nodeServoPosition = 0;
+LightMode nodeLightMode = LightMode::Off;
 int16_t nodeAppliedPwm = 0, localAppliedPwm = 0;
 bool carriagesLinked = false;
 bool controllerReady = false;
 bool redOutputOn = false, lightStrobeActive = false;
 uint32_t lastLightToggleAt = 0;
 
-#include "controller_hardware.h"
-#include "controller_estimator.h"
-#include "controller_motion.h"
+#include "functions/controller_hardware.h"
+#include "functions/controller_estimator.h"
+#include "functions/light_actions.h"
+#include "programs/controller_motion.h"
+#include "programs/scenario_engine.h"
+#include "programs/scenario_codec.h"
+ScenarioEngine scenario;
 
 bool nodeSeenRecently() { return nodeKnown && millis() - nodeSeenAt < NODE_LINK_TIMEOUT_MS; }
 bool nodeOnline() {
@@ -49,7 +54,8 @@ void sendRemoteCommand() {
                            PacketType::Command, REMOTE_CARRIAGE_ID,
                            controllerSession, commandSequence,
                            confirmed ? carriages[1].outputPwm : int16_t(0),
-                           confirmed ? carriages[1].servoPosition : uint8_t(0)};
+                           confirmed ? carriages[1].servoPosition : uint8_t(0),
+                           confirmed ? carriages[1].lightMode : LightMode::Off};
   carriageRadio.send(nodeMac, packet);
 }
 
@@ -69,6 +75,7 @@ void receiveNodePacket() {
     nodeAcked = false;
     nodeAppliedPwm = 0;
     nodeServoPosition = 0;
+    nodeLightMode = LightMode::Off;
   }
   nodeKnown = true;
   nodeSeenAt = frame.receivedAt;
@@ -77,6 +84,7 @@ void receiveNodePacket() {
     nodeAcked = false;
     nodeAppliedPwm = 0;
     nodeServoPosition = 0;
+    nodeLightMode = LightMode::Off;
     return;
   }
   const uint32_t lag = commandSequence - packet.sequence;
@@ -84,6 +92,7 @@ void receiveNodePacket() {
       (nodeAcked && int32_t(packet.sequence - lastAckSequence) < 0)) return;
   nodeAppliedPwm = packet.pwm;
   nodeServoPosition = packet.servoPosition;
+  nodeLightMode = packet.lightMode;
   if (!nodeAcked || packet.sequence != lastAckSequence) {
     lastAckSequence = packet.sequence;
     lastAckAt = frame.receivedAt;
@@ -96,6 +105,16 @@ void broadcastState() {
   doc["type"] = "state";
   doc["linked"] = carriagesLinked;
   doc["nodeOnline"] = nodeOnline();
+  JsonObject plan = doc["scenario"].to<JsonObject>();
+  plan["id"] = scenario.id();
+  plan["state"] = scenarioStateName(scenario.state());
+  plan["error"] = scenarioErrorName(scenario.error());
+  JsonArray completed = plan["completed"].to<JsonArray>();
+  completed.add(scenario.completed(0));
+  completed.add(scenario.completed(1));
+  JsonArray total = plan["total"].to<JsonArray>();
+  total.add(scenario.count(0));
+  total.add(scenario.count(1));
   JsonArray arr = doc["carriages"].to<JsonArray>();
   for (uint8_t i = 0; i < 2; ++i) {
     JsonObject c = arr.add<JsonObject>();
@@ -112,6 +131,7 @@ void broadcastState() {
     c["servoAngle"] = carriages[i].servoAngle;
     c["servoPosition"] = i == 0 ? carriages[i].servoPosition : (nodeOnline() ? nodeServoPosition : 0);
     c["servoEnabled"] = carriages[i].servoEnabled;
+    c["lightMode"] = uint8_t(i == 0 ? carriages[i].lightMode : nodeLightMode);
     c["servoTravel90Ms"] = SERVO_TRAVEL_90_MS[i];
     c["calibrated"] = TRAVEL_TIMES[i].right16mSeconds > 0 && TRAVEL_TIMES[i].left16mSeconds > 0;
     c["mode"] = modeName(carriages[i].mode);
@@ -124,11 +144,58 @@ void broadcastState() {
   wsServer.broadcastTXT(message);
 }
 
+void reportScenarioResult(const char *operation, bool accepted, const char *reason) {
+  JsonDocument reply;
+  reply["type"] = "scenario_result";
+  reply["operation"] = operation;
+  reply["accepted"] = accepted;
+  reply["reason"] = reason;
+  reply["id"] = scenario.id();
+  String message;
+  serializeJson(reply, message);
+  wsServer.broadcastTXT(message);
+}
+
 void handleUiCommand(const uint8_t *payload, size_t length) {
   JsonDocument doc;
   if (deserializeJson(doc, payload, length)) return;
   const char *type = doc["type"] | "";
   const uint8_t selected = constrain(doc["carriage"] | 1, 1, 2) - 1;
+  if (!strcmp(type, "scenario_load")) {
+    ScenarioStep steps[2][ScenarioEngine::MAX_STEPS] = {};
+    uint8_t counts[2] = {};
+    uint32_t id = 0;
+    const bool accepted = decodeScenario(doc, steps, counts, id) &&
+                          scenario.load(steps, counts, id);
+    reportScenarioResult("load", accepted, accepted ? "ok" : "invalid_plan_or_busy");
+    broadcastState();
+    return;
+  }
+  if (!strcmp(type, "scenario_start")) {
+    const bool accepted = scenario.start(doc["id"] | uint32_t(0), nodeOnline());
+    if (accepted) carriagesLinked = false;
+    reportScenarioResult("start", accepted, accepted ? "ok" :
+                         scenario.count(1) && !nodeOnline() ? "remote_offline" : "not_ready");
+    broadcastState();
+    return;
+  }
+  if (!strcmp(type, "scenario_stop")) {
+    scenario.stop();
+    reportScenarioResult("stop", true, "ok");
+    broadcastState();
+    return;
+  }
+  if (!strcmp(type, "scenario_event")) {
+    const int64_t eventId = doc["eventId"] | int64_t(0);
+    const bool accepted = eventId > 0 && eventId <= 63 &&
+                          (doc["id"] | uint32_t(0)) == scenario.id() &&
+                          scenario.state() == ScenarioEngine::State::Running;
+    if (accepted) scenario.signalEvent(uint8_t(eventId));
+    reportScenarioResult("event", accepted, accepted ? "ok" : "invalid_event");
+    broadcastState();
+    return;
+  }
+  if (scenario.state() == ScenarioEngine::State::Running) scenario.stop();
   if (!strcmp(type, "link")) {
     carriagesLinked = nodeOnline() && (doc["enabled"] | false);
   } else if (!strcmp(type, "speed")) {
@@ -160,14 +227,8 @@ void handleUiCommand(const uint8_t *payload, size_t length) {
     applyToSelected(selected, [&](uint8_t i) {
       CarriageState &c = carriages[i];
       if (!enabled) { closeServo(c); return; }
-      c.servoAngle = angle;
-      if (!c.servoEnabled) {
-        c.servoEnabled = true;
-        c.servoPosition = 0;
-        c.nextServoAt = millis() + SERVO_CLOSED_HOLD_MS;
-      } else if (c.servoPosition) {
-        c.servoPosition = angle;
-      }
+      startServoCycle(c, i, angle,
+          DEFAULT_OPEN_HOLD_MS, DEFAULT_CLOSED_HOLD_MS, millis());
     });
   } else if (!strcmp(type, "jog")) {
     const char *direction = doc["direction"] | "stop";
@@ -235,7 +296,7 @@ void setup() {
 }
 
 void loop() {
-  if (!controllerReady) { delay(10); return; }
+  if (!controllerReady) return;
   httpServer.handleClient();
   wsServer.loop();
   receiveNodePacket();
@@ -249,6 +310,8 @@ void loop() {
     }
   }
   updateCarriage(0); updateCarriage(1);
+  scenario.tick(millis(), nodeOnline(), nodeAppliedPwm, nodeServoPosition,
+                nodeLightMode, commandSequence, lastAckSequence);
   updateLocalMotor();
   updateLights(millis());
   writeLocalServo(carriages[0].servoPosition);

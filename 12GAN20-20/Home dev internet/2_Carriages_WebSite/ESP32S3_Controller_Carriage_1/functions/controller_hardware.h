@@ -25,10 +25,13 @@ void writeLights(bool redEnabled) {
 }
 
 void updateLights(uint32_t now) {
-  if (localAppliedPwm == 0) {
+  LightMode mode = carriages[0].lightMode;
+  if (mode == LightMode::Auto)
+    mode = localAppliedPwm == 0 ? LightMode::Green : LightMode::BlinkRed;
+  if (mode != LightMode::BlinkRed) {
     lightStrobeActive = false;
-    writeLights(false);
-    digitalWrite(LIGHT_GREEN_PIN, HIGH);
+    writeLights(mode == LightMode::Red);
+    digitalWrite(LIGHT_GREEN_PIN, mode == LightMode::Green ? HIGH : LOW);
     return;
   }
   digitalWrite(LIGHT_GREEN_PIN, LOW);
@@ -69,7 +72,8 @@ void updateLocalMotor() {
 }
 
 void writeLocalServo(uint8_t physicalAngle) {
-  const uint8_t commandAngle = constrain(uint16_t(physicalAngle) * 2, uint16_t(0), uint16_t(180));
+  const uint8_t commandAngle = constrain(uint16_t(physicalAngle) * SERVO_COMMAND_PER_PHYSICAL_DEGREE,
+                                         uint16_t(0), uint16_t(180));
   const uint16_t pulseUs = SERVO_MIN_PULSE_US +
       (uint32_t(SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US) * commandAngle) / 180;
   const uint32_t duty = (uint64_t(pulseUs) * SERVO_FREQUENCY_HZ * 16384ULL + 500000ULL) / 1000000ULL;
