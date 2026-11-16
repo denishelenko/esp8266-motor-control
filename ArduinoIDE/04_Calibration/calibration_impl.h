@@ -131,7 +131,7 @@ void setup() {
   WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
   WiFi.softAP("Motor-Calibration", WIFI_PASSWORD, 6, false, 2);
   dns.start(53, "*", IPAddress(192,168,4,1));
-  MDNS.begin("motor");
+  MDNS.begin("motor-control");
 
   server.on("/", [](){ server.send_P(200, "text/html; charset=utf-8", CALIBRATION_PAGE); });
   server.on("/run", handleRun);
@@ -143,7 +143,7 @@ void setup() {
   server.on("/status", handleStatus);
   server.onNotFound([](){ server.sendHeader("Location", "/"); server.send(302, "text/plain", ""); });
   server.begin();
-  Serial.println("Join Motor-Calibration and open http://motor.local");
+  Serial.println("Join Motor-Calibration and open http://motor-control.local");
 }
 
 void loop() {

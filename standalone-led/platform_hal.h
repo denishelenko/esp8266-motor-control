@@ -14,7 +14,7 @@ using LocalWebServer = WebServer;
 class LocalDnsServer {
  public:
   bool start(uint16_t, const String &, const IPAddress &) {
-    // Captive DNS is optional; direct IP and motor.local remain available.
+    // Captive DNS is optional; direct IP and motor-control.local remain available.
     return true;
   }
   void processNextRequest() {}

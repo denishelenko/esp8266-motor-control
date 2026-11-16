@@ -383,11 +383,11 @@ void setup() {
 #if defined(DEVICE_ROLE_CONTROLLER)
   if (!initEspNow(onControllerEspNowReceive)) Serial.println("ESP-NOW init failed");
 #endif
-  dnsServer.start(53, "*", IPAddress(192,168,4,1)); MDNS.begin("motor");
+  dnsServer.start(53, "*", IPAddress(192,168,4,1)); MDNS.begin("motor-control");
   httpServer.on("/", [](){ httpServer.send_P(200, "text/html; charset=utf-8", WEB_UI); });
   httpServer.onNotFound([](){ httpServer.sendHeader("Location", "/"); httpServer.send(302, "text/plain", ""); });
   httpServer.begin(); wsServer.begin(); wsServer.onEvent(handleWs);
-  Serial.println("Open http://motor.local or http://192.168.4.1");
+  Serial.println("Open http://motor-control.local or http://192.168.4.1");
 }
 
 void loop() {

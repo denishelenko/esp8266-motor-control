@@ -411,11 +411,11 @@ void setup() {
     && WiFi.softAP(WIFI_SSID, WIFI_PASSWORD, WIFI_CHANNEL, false, 4);
   Serial.printf("[WIFI] %s IP=%s channel=%ld\n", networkReady ? "OK" : "FAILED",
     WiFi.softAPIP().toString().c_str(), static_cast<long>(WiFi.channel()));
-  dnsServer.start(53, "*", IPAddress(192,168,4,1)); MDNS.begin("motor");
+  dnsServer.start(53, "*", IPAddress(192,168,4,1)); MDNS.begin("motor-control");
   httpServer.on("/", [](){ httpServer.send_P(200, "text/html; charset=utf-8", WEB_UI); });
   httpServer.onNotFound([](){ httpServer.sendHeader("Location", "/"); httpServer.send(302, "text/plain", ""); });
   httpServer.begin(); wsServer.begin(); wsServer.onEvent(handleWs);
-  Serial.println("Open http://motor.local or http://192.168.4.1");
+  Serial.println("Open http://motor-control.local or http://192.168.4.1");
 }
 
 void loop() {
